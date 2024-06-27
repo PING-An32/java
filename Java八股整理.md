@@ -4420,7 +4420,7 @@ ACID:
 
 [深入浅出Spring事务的实现原理 - 掘金 (juejin.cn)](https://juejin.cn/post/7106158883055353870#heading-19)
 
-​	当事务方法被另一个事务方法调用时，必须指定事务应该如何传播。例如：方法可能继续在现有事务中运行，也可能开启一个新事务，并在自己的事务中运行。
+​	当事务方法被另一个事务方法调用时，必须指定事务应该如何传播。例如：方法可能继续在现有事务中运行，也可能开启一个新事务，并在自己的事务中运行。required若出现异常会导致2个事务都回滚，requires_new只回滚1个。
 
 1. **required：(默认传播行为)**，如果当前有事务，则加入该事务。如果当前没有事务，则新增一个事务。
    例如：方法A调用方法B，它们用同一个事务。（如果A没有事务，会创建一个事务并加入B）（只要有一个回滚，整体就会回滚）
@@ -6384,7 +6384,7 @@ public class RedisLock {
 
     @Autowired
     private StringRedisTemplate redisTemplate;
-
+	//锁上不要放资源！
     public boolean tryLock(String lockKey, String clientId, long seconds) {
         return redisTemplate.opsForValue().setIfAbsent(lockKey, clientId, seconds, TimeUnit.SECONDS);
     }
@@ -6464,14 +6464,74 @@ public class NoRepeatSubmitAspect {
 
 - 涉及的表：`shopping_cart`、`orders`、`order_detail`。
 
-
-
 - 每个用户有个user_id，当添加购物车时，会在购物车表`shopping_cart`中添加一行记录或者更改商品数量。
 - 每个用户的user_id都会对应`shopping_cart`中多个行。
 - 提交订单时，查询`shopping_cart`中user_id对应的行，查找出一个`List<ShoppingCart>`，表示用户的购物车里的商品集合。
 - `shopping_cart`表中每行记录都有`dish_id`和`setmeal_id`，用来查询购物车一条记录对应着什么菜品或者套餐。
 - 下单后一个用户的所有`shopping_cart`行封装成`order`表中的一个订单行记录，这个行记录有个`order_id`，有个`name`（实际上就是`order_id`）。此外，`order`表中保存着订单的下单用户，电话，地址等信息。
 - 然后要查询订单内容的话，通过`order`表的`name`（实际上就是`order_id`）去查询`order_detail`表，有可能一个`order_id`对应了多个`order_detail`表中行，也就是多个商品、商品数量。
+
+#### 防止菜品超售——MySQL行锁
+
+1.首先修改表结构，在dish表中添加remaining_amount字段，默认值为2，同步修改dish实体类
+
+2.新建一个NotEnoughStockException
+
+```java
+public class NotEnoughStockException extends RuntimeException{
+    public NotEnoughStockException(String message) {super(message);}
+}
+//并在全局异常处理器中进行捕捉
+```
+
+3.在dishService中写一个当购物车中请求数量大于菜品余量下单失败的逻辑，声明传播行为为required，表示若库存修改失败则2个事务都回滚，在orderserviceImpl中调用。
+
+```java
+Map<Long,Integer> dishAmount = new HashMap<>();//扩展功能
+// dishId   sub
+
+for(ShoppingCart shoppingCart : shoppingCarts) {
+    dishAmount.put(shoppingCart.getDishId(),shoppingCart.getNumber());//扩展功能，放入当前购物车选中的菜品数量，之后需要减去更新到dish表中
+}
+
+//扩展功能：菜品超售检测
+//查询购物车涉及到的dish的余量，通过map的key来查询
+LambdaQueryWrapper<Dish> wrapperDish = new LambdaQueryWrapper<>();
+//map的keyset包含了所有菜品id
+wrapperDish.in(Dish::getId,dishAmount.keySet().stream().collect(Collectors.toList()));
+List<Dish> dishList =  dishService.list(wrapperDish);
+//对dish中的remainingAmount做 修改 并 保存
+List<Dish> dishes = dishList.stream().map((item)->{
+    Integer remains = item.getRemainingAmount();
+    Integer sub = dishAmount.get(item.getId());
+    if(remains-sub<0){//下单不成功，点单数大于库存数
+        throw new NotEnoughStockException("库存不足，下单失败");
+    }else{
+        item.setRemainingAmount(remains-sub);
+    }
+    return item;
+}).collect(Collectors.toList());
+dishService.updateBatchById(dishes);
+```
+
+4.存在一种可能，菜品一的余量为1，用户A和用户B同时下单1份菜品一，A和B都先查出了当前菜品一的余量为1，此时A先完成dishservice中的修改菜品余量的逻辑，使得数据库中菜品一的余量为0，而B以为菜品一还有余量，也将数据库中的菜品一的余量设为0，导致菜品一出售了2份，而数据库中只减少了1。
+
+5.解决方法是在用户A查询数据库余量时添加行锁，即
+
+```sql
+SELECT remaining_amount FROM dish WHERE id = ? FOR UPDATE
+```
+
+该语法可以在SELECT查询语句中增加FOR UPDATE关键字，表示对查询结果中的数据行进行锁定，锁定范围为从SELECT语句执行到事务结束。
+
+```java
+//将
+wrapperDish.in(Dish::getId,dishAmount.keySet().stream().collect(Collectors.toList()));
+//改为
+wrapperDish.in(Dish::getId,dishAmount.keySet().stream().collect(Collectors.toList())).last("FOR UPDATE");
+```
+
+
 
 #### 项目后端部署
 
