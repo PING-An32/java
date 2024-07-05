@@ -3590,19 +3590,82 @@ A.xx=D;//A到D的引用被建立
 
 #### 3. **怎么实现一个自定义的类加载器？需要注意什么？**   ✅
 
-若要实现自定义类加载器，**只需要继承java.lang.ClassLoader类，并且重写其findClass()方法即可**。只重写findClass()不重写loadClass()不会打破双亲委派模型。
+若要实现自定义类加载器，**只需要继承java.lang.ClassLoader类，并且重写其findClass()方法即可**。
+
+只重写findClass()不重写loadClass()不会打破双亲委派模型。
+
+==**类的加载使用的是defineClass方法**==
+
+```java
+psvm{
+    MyClassLoader classLoader = new MyClassLoader();
+    Class<?> c1 = classLoader.loadClass("文件名");
+}
+class MyClassLoader extends Classloader{
+    @Override
+    protected Class<?> findClass(String name) throws ClassNotFoundException{
+        String path = "E:\\myclasspath\\" + name + ".class";
+        try{
+            ByteArrayOutputStream os = new ByteArrayOutputStream();
+            Files.copy(Paths.get(path),os);
+            //得到字节数组
+            byte[] bytes = os.toByteArray();
+            //byte[] -> *.class   调用父类的类加载方法
+            return defineClass(name,bytes,0,bytes.length);
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+    }
+}
+```
 
 #### 4. 怎么打破双亲委派模型
 
 1. 自己写一个类加载器
 2. **重写loadClass()方法，打破双亲委派逻辑**：因为类加载器在进行类加载的时候，它首先不会自己去尝试加载这个类，而是把这个请求委派给父类加载器去完成（调用父加载器 `loadClass()`方法来加载类）。
 
+```java
+//JDK的源码
+protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException{
+    synchronized (getClassLoadingLock(name)) {
+        // 检查该类是否已经加载
+        Class<?> c = findLoadedClass(name);
+        if (c == null) {//类没被加载过则去加载
+            long t0 = System.nanoTime();
+            try {
+                if (parent != null) {
+                    //有上级的话委派给上级loadClass
+                    c = parent.loadClass(name, false);
+                } else {
+                    //null说明是启动类加载器，说明此时栈帧为扩展类加载器，委派给启动类加载器加载
+                    c = findBootstrapClassOrNull(name);
+                }
+            } catch (ClassNotFoundException e) {
+            }
+            if (c == null) {
+                // 每一层找不到，调用findClass方法（每个类加载器自己扩展）来加载
+                long t1 = System.nanoTime();
+                c = findClass(name);
+                // 记录耗时
+                sun.misc.PerfCounter.getParentDelegationTime().addTime(t1 - t0);
+                sun.misc.PerfCounter.getFindClassTime().addElapsedTimeFrom(t1);
+                sun.misc.PerfCounter.getFindClasses().increment();
+            }
+        }
+        if (resolve)resolveClass(c);
+        return c;
+    }
+}
+```
+
 #### 5. 什么情况下打破双亲委派模型？
 
 * 热部署
-* SPI(Service Provider Interface)
+* SPI(Service Provider Interface)**用来被第三方实现的API**
 
-在mysql的jar包中写一个文本文件，里面有启动类
+SPI约定：在mysql的jar包的META-INF/services目录下以接口的全限定名命名一个文件，文件内容是实现类名
+
+![image-20240705085509213](Java八股整理.assets/image-20240705085509213.png)
 
 > 第二种情况，在这个类加载模型中，有可能存在顶层类加载器加载的类，需要调用用户类加载器实现的代码的情况。
 >
@@ -3613,6 +3676,15 @@ A.xx=D;//A到D的引用被建立
 > 于是就出现了启动类加载器加载的类要调用应用类加载器加载的实现。
 >
 > 为了解决这个问题，在JVM中引入了线程上下文类加载器，它可以把原本需要启动类加载器加载的类，由应用类加载器进行加载。
+
+```java
+//JDK伪代码  此处接口类型是java.jdbc.Driver  load内部调用了线程上下文加载器
+ServiceLoader<接口类型> allImpls = ServiceLoader.load(接口类型.class)
+Iterator<接口类型> iter = allImpls.iterator()
+while(iter.hasNext()){
+    iter.next();
+}
+```
 
 ### JVM调优
 
