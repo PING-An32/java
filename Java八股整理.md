@@ -1,4 +1,4 @@
-Java基础
+## Java基础
 
 #### Java为什么是”编译与解释并存“的语言？（编译体现在JIT）
 
@@ -3180,7 +3180,7 @@ PhantomReference<byte[]> ref = new PhantomRefence<>(new byte[__4MB],queue)
 
 **JDK7时**：full GC时永久代回收。**jdk7**因为full GC的频率不高导致方法区（永久代）中的字符串常量池久久不会被清理，所以将字符串常量池移动到堆中，能及时回收。
 
-![image-20240628155120878](C:\Users\Lenovo\AppData\Roaming\Typora\typora-user-images\image-20240628155120878.png)
+![image-20240628155120878](Java八股整理.assets/image-20240628155120878-1720153673798.png)
 
 字面量和符号引用是方法区常量池主要存放的两大类常量。
 
@@ -3585,12 +3585,12 @@ A.xx=D;//A到D的引用被建立
 - 一个类加载器收到类加载的请求，不会先通过自身加载，而是先把请求交给父类（加载器的父子关系不是继承实现的，是通过组合关系复用父类代码），调用父类的`loadClass()`方法来加载类。每个层级的类加载器都是这样，最终会传给顶层的Bootstrap类加载器加载类，如果父加载器无法完成这个类加载请求，子加载器才会加载。
 
 - 优点：
-  - **防止类的重复加载**：防止内存中出现多份同样的字节码。试想，如果没有双亲委派机制模型而是由各个类加载器自行加载的话，如果用户编写了一个java.lang.Object的同名类并放在ClassPath中，多个类加载器都会去加载这个类到内存中，系统中将会出现多个不同的Object类，那么类之间的比较结果及类的唯一性将无法保证。
+  - **防止类的重复加载**：防止内存中出现多份同样的字节码。在 JVM 中，每个类都由一个唯一的全限定名和一个对应的类加载器确定，类加载器根据全限定名和类路径来确定类的位置。因此，在一个 JVM 实例中，如果有两个类加载器分别加载了同一个类，JVM 会认为这两个类是不同的，从而导致类型转换异常等问题。通过双亲委派机制，父类加载器在加载类之前会先委托给自己的父类加载器去加载，从而保证一个类在 JVM 中只会有一份，并且由其父类加载器所加载。
   - **保证程序安全，防止核心API被篡改**：所有类加载器都会先检查Bootstrap加载器是否加载了某个类，一些底层核心的类都已经被加载好不会被覆盖，比如说不会是自定义加载器又加载了一个Object，和原先的Object类重复。
 
 #### 3. **怎么实现一个自定义的类加载器？需要注意什么？**   ✅
 
-若要实现自定义类加载器，**只需要继承java.lang.ClassLoader类，并且重写其findClass()方法即可**。
+若要实现自定义类加载器，**只需要继承java.lang.ClassLoader这个抽象类（没有抽象方法），并且重写其findClass()方法即可**。
 
 只重写findClass()不重写loadClass()不会打破双亲委派模型。
 
@@ -3696,7 +3696,7 @@ while(iter.hasNext()){
 
 -Xss: 线程的栈大小。设置越小，一个线程能分配的栈帧就越小，JVM整体能开启的线程数更多。
 
--XX:NewRatio ： 新生代和老年代的比例。默认是1：4
+-XX:NewRatio ： 新生代和老年代的比例。默认是1：4（XX标识非稳定参数，用于规定JVM行为）
 
 -XX:SurvivorRatio ：Eden区和Survivor区的大小比例
 
@@ -3720,7 +3720,7 @@ while(iter.hasNext()){
 * jmap -histo : 打印每个class的实例数目,内存占用,类全名信息. VM的内部类名字开头会加上前缀
 
 **`jhat`** (JVM Heap Dump Browser) : 用于分析 heapdump 文件，它会建立一个 HTTP/HTML 服务器，让用户可以在浏览器上查看分析结果;
-**`jstack`** (Stack Trace for Java) : 生成虚拟机当前时刻的线程快照，线程快照就是当前虚拟机内每一条线程正在执行的方法堆栈的集合
+**`jstack`** (Stack Trace for Java) : 生成虚拟机当前时刻的线程快照，线程快照就是当前虚拟机内每一条线程正在执行的方法==堆栈==的集合（注意也可以看到堆）
 
 * jstack pid 查看当前pid的线程情况
 
@@ -3806,7 +3806,7 @@ Windows排查步骤：
 Linux排查步骤：
 
 1. 使用top命令查看各个进程的CPU使用情况
-2. 通过top -Hp [进程号]，查看某个进程中所有线程的CPU使用情况
+2. 通过top -Hp [进程号]，查看某个进程中所有线程的CPU使用情况（H表示Thread Mode，p表示PID）
 3. 再使用jstack [线程号]，查看当前线程的堆栈状态
 4. 根据生成的thread dump分析线程状态
 
@@ -4623,11 +4623,11 @@ ConcurrentHashMap可以实现读读并发，读写并发，写写互斥。因为
 #### 1.什么是Spring（Spring有哪些特性）？✅
 
 * 轻量：Spring是轻量级的开源的 JavaEE 框架,可以解决企业应用开发的复杂性。Spring有两个核心部分，IOC和AOP。
-* **控制反转**（Inverse of Control:控制反转）：==借助于“第三方（IOC容器）”实现具有依赖关系的对象之间的解耦==
+* **控制反转**（Inversion of Control:控制反转）：==借助于“第三方（IOC容器）”实现具有依赖关系的对象之间的解耦==
 * **AOP**(Aspect-Oriented Programming:面向切面编程)：Spring支持面向切面的编程，并且==把应用业务逻辑和系统服务分开==。
 * **事务管理**：Spring提供一个持续的事务管理接口，可以扩展到上至本地事务下至全局事务(JTA)。
 * 容器：Spring包含并管理应用中对象的生命周期和配置；
-* 异常处理：Spring提供方便的API把具体技术相关的异常（比如由JDBC，Hibernate或JDO抛出 的）转化为一直的unchecked异常。
+* 异常处理：Spring提供方便的API把具体技术相关的异常（比如由JDBC，Hibernate或JDO抛出 的）转化为一致的unchecked异常。
 
 Spring架构：
 
@@ -4700,10 +4700,6 @@ Arrays.stream(files).forEach(f->{
 })
 ```
 
-
-
-
-
 #### 3.什么是Bean，Bean的注解，Bean的生命周期？✅
 
 简单来说，==Bean 代指的就是那些被 IoC 容器所管理的对象==。Bean可以通过xml配置或者注解的方式来定义。通过`getBean`方法来获得该对象。
@@ -4733,14 +4729,35 @@ public OneService getService(status) {
                 return new serviceImpl3();
     }
 }
-
 ```
 
 **注入Bean的注解有哪些**
 
-- @Autowired：优先byType匹配，当某个接口有实现类时，再byName，这个name通常是类名（首字母小写），因此如果一个接口有多个实现类（byType失效），而我们要注入的对象的名称和实现类类名不匹配（byName失效）就会注入失败。此时要用@Qualifier显示要注入的类的类名。
-- @Resource：优先byName，匹配不到就byType。可以使用name属性显式指定名称。
+- @Autowired（Spring提供）：单独使用只能byType匹配。与@Qualifier联合使用才能byName，这个name通常是类名（首字母小写），因此如果一个接口有多个实现类，必须用@Qualifier，最好显式声明要注入的类的类名，而我们要注入的对象的名称和实现类类名不匹配（byName失效）就会注入失败。
+
+  ```java
+  @Autowired
+  private DishService dishService
+  当DishService类没有实现类时，报受检异常（即编译不通过）
+  当DishService类有一个实现类时，byType匹配
+  当DishService类有多个实现类时，报受检异常，必须与@Qualifier联合使用才能byName匹配
+  
+  @Autowired
+  @Qualifier("dishServiceImpl")
+  private DishService dishService
+      
+  @Resource(name="dishServiceImpl")//若不提供name属性，则默认name为dishService
+  private DishService dishService//-------------------------------↑
+  ```
+
+- @Resource（JDK提供）：优先根据name属性byName匹配，若没有指定name属性，则name为要注入的bean的==变量名==，匹配不到就byType。
+
 - @Inject
+
+**注入简单类型的注解**
+
+- @Value：@Value("${}")
+- @Resource
 
 **Bean的生命周期：**
 
