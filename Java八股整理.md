@@ -4661,7 +4661,7 @@ IOC是`Inversion of Control`的缩写，多数书籍翻译成“**控制反转**
 - **控制** ：指的是对象创建（实例化、管理）的权力
 - **反转** ：主要指控制权的反转，控制权交给外部环境（Spring 框架、IoC 容器）
 
-传统方法中A对象用到B对象时，需要A来new一个B对象；现在当A用到B的时候，IOC容器会主动创建一个对象B注入到A需要的地方（通过注解感知到或者xml配置）。这样A获得依赖对象B的过程就由主动变成了被动行为，因此叫控制反转。调用方无需关心组件的具体实现，也无需在组件功能发生变化时去改变所有调用者的代码。
+传统方法中A对象用到B对象时，需要A来new一个B对象；现在当A用到B的时候，IOC容器会主动创建一个对象B注入到A需要的地方（通过注解感知到或者xml配置）。这样A获得依赖对象B的过程就由主动变成了被动行为，因此叫控制反转。调用方无需关心组件（类B）的具体实现，也无需在组件功能发生变化时（类B的创建发生变化时）去改变所有调用者的代码。
 
 ![img](Java八股整理.assets/frc-365faceb5697f04f31399937c059c162.png)
 
@@ -4761,51 +4761,94 @@ public OneService getService(status) {
 
 **Bean的生命周期：**
 
-（1）通过构造器创建 bean 实例，实例化（无参数构造） 
+（1）**实例化bean**（调用无参数构造方法） 
 
-（2）为 bean 的属性设置值和对其他 bean 引用（调用 set 方法，属性注入） 
+（2）**为bean的属性赋值**（调用set方法，属性注入，包括对其他 bean 引用） 
 
 > 如果这个bean实现了**BeanPostProcessor** 接口，实现该接口可以增强的方面是：**在 BeanFactory 已经初始化而 Bean 实例化之前调用该接口的方法可以修改或添加 Bean 的定义**。所以该接口的调用时机是在 Bean **实例化之前**。AOP一般在这个阶段完成的
 
-（3）把 bean 实例传递  bean 前置处理器的方法 postProcessBeforeInitialization  
+（3）把 bean 实例传递  bean 后置处理器的方法 postProcessBeforeInitialization  
 
-（4）调用 bean 的初始化的方法（需要进行配置初始化的方法） 
+（4）**初始化bean**（调用bean的init方法，这个init方法需要自己写自己配） 
 
-（5）把 bean  实例传递 bean  后置处理器的方法 postProcessAfterInitialization 
+（5）把 bean  实例传递 bean 后置处理器的方法 postProcessAfterInitialization 
 
-（6）bean 可以使用了（对象获取到了） 
+（6）**使用bean**bean 可以使用了（对象获取到了）
 
-（7）当容器关闭时候，调用 bean 的销毁的方法（需要进行配置销毁的方法）
+（7）**销毁bean**当容器关闭时候，即applicationcontext.close()，调用 bean 的销毁的方法（调用bean的destroy方法，这个destroy方法需要自己写自己配）
 
 ![img](Java八股整理.assets/1665393936765-0ea5dcdd-859a-4ac5-9407-f06022c498b9.png)
 
+```java
+@Component
+public class MyBeanPostProcessor implements BeanPostProcessor{//对应用中所有的Bean生效
+    @Override
+    public Object postProcessBeforeInitialization(Object bean,String beanName) throws BeansException{
+        sout("三、执行Bean后处理器的before方法")
+        return BeanPostProcessor.super.postProcessBeforeInitialization(bean,beanName);
+    }
+    @Override
+    public Object postProcessAfterInitialization(Object bean,String beanName) throws BeansException{
+        sout("五、执行Bean后处理器的after方法")
+        return BeanPostProcessor.super.postProcessAfterInitialization(bean,beanName);
+    }
+}
+
+public class MyBean{
+    private String name;
+    public MyBean(){
+        sout("一、实例化Bean")
+    }
+    public void setName(String name){
+        this.name = name;
+        sout("二、为Bean的属性赋值")
+    }
+    public void init(){
+        sout("四、初始化Bean")
+    }
+    public void destroy(){
+        sout("七、销毁Bean")
+    }
+}
+
+@Configuration
+public class myConfig{
+    @Bean(initMethod = "init", destroyMethod = "destroy"))
+    public MyBean createMyBean(){
+        return new MyBean();
+    }
+}
+```
+
 #### 4.  Bean的线程安全性✅
 
-​	Spring中的Bean是否线程安全，取决于其作用域和状态。
+Spring中的Bean是否线程安全，取决于其作用域和状态。
 
-​	作用域是prototype的没有线程安全问题，因为每次获取bean都是不同的。作用域是singleton的有线程安全问题，因为IoC容器中只有一个，如果该bean有状态（指的是包含可变的成员变量）那就有线程安全问题。
+作用域是prototype的没有线程安全问题，因为每次获取bean都是不同的。作用域是singleton的有线程安全问题，因为IoC容器中只有一个，如果该bean有状态（指的是包含可变的成员变量）那就有线程安全问题。
 
-​	不过大部分bean是无状态的（比如Service和DAO），这种情况下线程安全。
+不过大部分bean是无状态的（比如Service和DAO），这种情况下线程安全。
 
 #### 5.Bean的作用域？✅
 
 用@Scope配置
 
+```java
+@Bean
+@Scope("prototype")
+public MyBean myBean()return new MyBean();
+```
+
 1. **singleton** : 唯一 bean 实例，Spring 中的 bean 默认都是单例的；
 2. **prototype** : 每次获取bean都会创建一个新的 bean 实例，连续`getBean()`两次得到的是不同的；
 3. request：每一次 HTTP 请求都会产生一个新的 bean，该 bean 仅在当前 HTTP request 内有效； 
-4. session : 每一次 HTTP 请求都会产生一个新的 bean，该 bean 仅在当前 HTTP session 内有效；
+4. session : 每一次 HTTP 请求都会产生一个新的 bean，该 bean 仅在当前 HTTP session 内有效；-
 5. application/global-session：每个Web应用启动时创建一个新的Bean，该bean在当前应用启动时间内有效。
-
-
-
-
 
 #### 6. 解释下什么是AOP？ ✅
 
-**AOP（Aspect-Oriented Programming，面向切面编程）**够将那些与业务无关，却为业务模块所共同调用的逻辑或责任（==**例如事务处理、日志管理、权限控制等**==）封装起来，便于减少系统的重复代码，降低模块间的耦合度，并有利于未来的可拓展性和可维护性。
+**AOP（Aspect-Oriented Programming，面向切面编程）**能够将那些与业务无关，却被业务模块所共同调用的逻辑或责任（==**例如事务处理、日志管理、权限控制等**==）封装起来，提高代码的复用性，降低模块间的耦合度，便于维护和扩展。
 
-AOP把软件系统分为两个部分：核心关注点和横切关注点。业务处理的主要流程是核心关注点，与之关系不大的部分是横切关注点。AOP作用在于分离系统的两个部分，将核心关注点和横切关注点分离开来。
+AOP把软件系统分为两个部分：核心关注点和横切关注点。业务处理的主要流程是核心关注点，与之关系不大的部分是横切关注点。AOP的作用在于分离系统的两个部分，将核心关注点和横切关注点分离开来。
 
 可以用Spring AOP实现或者AspectJ实现（AspectJ是一个AOP框架，Spring已经集成了AspectJ）
 
@@ -4826,10 +4869,10 @@ AOP把软件系统分为两个部分：核心关注点和横切关注点。业�
 #### 8. AspectJ定义的通知类型有哪些
 
 - Before（前置通知）：目标对象方法调用前触发。
-- After（后置通知）目标对象方法调用后使用触发。
+- After（后置通知）：目标对象方法调用后使用触发。
 - AfterReturning（返回通知）：目标对象方法调用完成，在返回结果值之后触发。
 - AfterThrowing（异常通知）：目标对象方法中触发/抛出异常后触发。
-- Around（环绕通知）：可以直接通过形参拿到目标对象和方法，可以自己控制方法执行前后的操作，甚至可以不调用目标对象的方法。
+- Around（环绕通知）==最外层==：可以直接通过形参拿到目标对象和方法，可以自己控制方法执行前后的操作，甚至可以不调用目标对象的方法。
 
 #### 9. AOP 的代理有哪几种方式？ ✅
 
@@ -4842,7 +4885,7 @@ AOP把软件系统分为两个部分：核心关注点和横切关注点。业�
 
 #### 10.JDK动态代理如何实现？✅
 
-动态代理和静态代理：代理类和代理对象编译时不知道/知道。
+动态代理和静态代理：代理类和代理对象编译时不知道/知道。动态代理会在运行时==动态生成类字节码==。
 
 简洁版：
 
@@ -4888,7 +4931,6 @@ class MyInvocationHandler implements InvocationHandler{
         Object returnValue = method.invoke(obj,args);
         //上述方法的返回值就作为当前类中的invoke()的返回值。
         return returnValue;
-
     }
 }
 ```
@@ -4898,22 +4940,44 @@ class MyInvocationHandler implements InvocationHandler{
 - JDK动态代理步骤：
 
 1. **代理类**通过实现`InvocationHandler`接口，重写`invoke`方法，通过反射调用**被代理类**的方法，并增强。
-2. 通过`Proxy.newProxyInstance()`返回一个**代理类对象**。
+2. 通过`Proxy.newProxyInstance()`返回一个**代理类对象**（这个代理类对象继承了`java.lang.reflect.Proxy`，实现了目标类接口）。
 
 
 
 - 补充 CGLIB动态代理步骤：
 
-1. 定义一个**拦截器**并实现接口 `MethodInterceptor`，重写`intercept`方法，用于拦截被代理类的方法，和JDK代理中的`invoke`有点像，但不是用反射。
-2. 代理工厂类通过`Enhancer`类设置回调，并`create()`创建代理类。
-3. 通过代理对象调用方法。
+1. 定义一个**拦截器**并实现接口 `MethodInterceptor`，重写`intercept`方法，用于拦截被代理类的方法，不是用反射，而是FastClass机制。`intercept`中调用`invokeSuper(o,objects)`来调用被增强的目标对象方法。（注意CGLIB不能调用`invoke`，否则会栈溢出，因为`invoke`对应的是增强方法本身）
+2. 代理工厂类通过`Enhancer`类设置回调，并`create()`创建代理类，代理类是目标对象的子类，即`proxy=Enhancer.create()`，这个`proxy`就是动态生成的。
+3. 通过代理对象调用方法，即`proxy.collect()`，会调用拦截器的`intercept`方法，由于是子类，所以`invokeSuper`就有意义了。
+
+
+
+`intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy)`
+
+调用`intercept`时需要加一个判断（switch），否则会代理目标类的所有非final和private的方法，比如hashcode和tostring就是我们不想代理的对象。
+
+对于每一个目标对象，CGLIB会生成三个class字节码文件，格式为
+
+`XXXImpl`$$`EnhancerByCGLIB`$$`随机字符串1`==真正的代理类==
+
+可以看到CGLIB继承了`XXXImpl`类，即目标类（被代理类），实现了Factory接口
+
+而JDK继承的是`java.lang.reflect.Proxy`，并实现了目标类的接口。这也是为什么JDK动态代理不能对类代理的原因。
+
+`XXXImpl`$$`EnhancerByCGLIB`$$`随机字符串2`==代理对象的FastClass，继承了FastClass类，==调用invoke或invokeSuper时动态生成
+
+`XXXImpl`$$`FastClassByCGLIB`$$`随机字符串3`==目标对象的FastClass，继承了FastClass类==调用invoke或invokeSuper时动态生成
 
 
 
 - 区别：
 
 1. JDK代理只能代理实现了接口的类。没有实现接口的由CGLIB动态代理。
-2. JDK代理使用了反射，CGLIB没有，所以CGLIB快一些。
+2. JDK动态代理生成效率更高，CGLIB生成流程复杂（涉及三个类的创建）。
+3. JDK==底层生成的动态代理类==继承`java.lang.reflect.Proxy`接口，实现目标类的接口；CGLIB==底层生成的==直接继承目标类，实现`Factory`接口
+4. 运行速度CGLIB更快，JDK代理使用了反射，CGLIB使用的是FastClass机制。
+
+**FastClass**：通过建立目标方法的索引（可以理解为所有方法合成一张表），调用时查找索引就能得到真正的目标方法
 
 
 
@@ -4926,11 +4990,11 @@ class MyInvocationHandler implements InvocationHandler{
 
 **核心组件**：
 
-- **DispatcherServlet：核心中央处理器**，用于接收、分发请求，并给客户端响应。
-- **HandlerMapping：处理器映射器**，用于根据URL去匹配能处理的Handler。
-- **HandlerAdapter：处理器适配器**，处理HandlerMapping找到的Handler，适配执行对应的Handler。
+- **DispatcherServlet：调度器**，用于接收、分发请求，并给客户端响应。
+- **HandlerMapping：处理器映射器**，用于根据URL去匹配能处理的Handler。例如@RequestMappingHandlerMapping用于找到@Controller类
+- **HandlerAdapter：处理器适配器**，处理HandlerMapping找到的Handler，适配执行对应的Handler。例如@RequestMappingHandlerAdapter用于调用带有@RequestMapping注解的方法。
 - **Handler：请求处理器**，处理实际请求。
-- **ViewResolver：视图解析器**：将Handler返回的逻辑视图渲染，通过DispatcherServlet返回给客户端。
+- **ViewResolver：视图解析器**：渲染Handler返回的逻辑视图，通过DispatcherServlet返回给客户端。
 
 ![img](https://oss.javaguide.cn/github/javaguide/system-design/framework/spring/de6d2b213f112297298f3e223bf08f28.png)
 
@@ -4953,7 +5017,7 @@ ACID:
 
 [深入浅出Spring事务的实现原理 - 掘金 (juejin.cn)](https://juejin.cn/post/7106158883055353870#heading-19)
 
-​	当事务方法被另一个事务方法调用时，必须指定事务应该如何传播。例如：方法可能继续在现有事务中运行，也可能开启一个新事务，并在自己的事务中运行。required若出现异常会导致2个事务都回滚，requires_new只回滚1个。
+​	当事务方法被另一个事务方法调用时，必须指定事务应该如何传播。例如：方法可能继续在现有事务中运行，也可能开启一个新事务，并	在自己的事务中运行。required若出现异常会导致2个事务都回滚，requires_new只回滚1个。
 
 1. **required：(默认传播行为)**，如果当前有事务，则加入该事务。如果当前没有事务，则新增一个事务。
    例如：方法A调用方法B，它们用同一个事务。（如果A没有事务，会创建一个事务并加入B）（只要有一个回滚，整体就会回滚）
@@ -4961,7 +5025,7 @@ ACID:
 2. **requires_new**：如果当前存在事务，不会加入该事务，而是把当前事务挂起，新增一个事务。两个事务互相独立不干扰。外层事务不影响内层事务提交/回滚，内层事务的异常会影响外层事务。
    例如：方法A调用方法B，它们用不同的事务。(B不会用A的事务，会新增事务。)
 
-3. **nested**：如果当前已经存在一个事务，那么该方法将会在嵌套事务中运行。嵌套的事务可以独立于当前事务进行单独地提交或回滚。如果当前事务不存在，那么其行为与Required一样。
+3. **nested**：如果当前已经存在一个事务，那么该方法将会在嵌套事务中运行（不会新增事务，而是保留一个savepoint）。嵌套的事务可以独立于当前事务进行单独地提交或回滚。如果当前事务不存在，那么其行为与Required一样。
    例如：方法A中调用了方法B，B中try catch手动回滚，A不会回滚。
 
 4. **mandatory**：如果当前存在事务，则加入该事务；如果当前 没有事务，则抛出异常。
@@ -4990,7 +5054,7 @@ ACID:
 
 #### 17.Spring 框架中用到了哪些设计模式？ ✅
 
-1. 工厂设计模式 : Spring 使用工厂模式通过 BeanFactory、ApplicationContext 创建 bean 对象； 
+1. 工厂设计模式 : Spring 使用工厂模式通过 BeanFactory（早期接口）、ApplicationContext（更高级的接口，对BeanFactory的封装） 创建 bean 对象； 
 2. 代理设计模式 : Spring AOP 功能的实现； 
 3. 单例设计模式 : Spring 中的 Bean 默认都是单例的；
 4. 模板方法模式 : Spring 中 jdbcTemplate、hibernateTemplate 等以 Template 结尾的对数据库操作的类，它们就使用到了模板模式；
@@ -5072,17 +5136,17 @@ Spring设计了三层缓存；
 
 - 一级缓存（`singletonObjects`）：缓存的是**已经实例化、属性注入、初始化后**的 Bean 对象。相当于IOC容器，可以直接从这里取bean。
 - 二级缓存（`earlySingletonObjects`）：缓存的是**实例化后，但未属性注入、初始化**的 Bean对象（用于提前暴露 Bean）。
-- 三级缓存（`singletonFactories`）：缓存的是一个 `ObjectFactory`，主要作用是生成原始对象进行 AOP 操作后的**代理对象**
+- 三级缓存（`singletonFactories`）：缓存的是一个 `ObjectFactory`，里面存放的是大量的“工厂对象”（如`BeanFactory`），每一个单例Bean都会对应一个单例工厂对象，工厂的主要作用是生成   原始对象进行 AOP 操作后的   **代理对象**
 
 假设A和B具有循环依赖
 
-![image-20230410215535654](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230410215535654.png)
+![img](Java八股整理.assets/image-20230410215535654.png)
 
 
 
 在创建 `AService` 时，实例化后将 **原始对象** 存放到缓存中（提早暴露），然后依赖注入时发现需要 `BService`，便会去创建 `BService`，实例化后同样将 **原始对象** 存放到缓存中，然后依赖注入时发现需要 `AService` 便会从缓存中取出并注入，这样 `BService` 就完成了创建，随后 `AService` 也就能完成属性注入，最后也完成创建。这样就打破了环形调用，避免循环依赖问题
 
-![image-20230410215909269](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230410215909269.png)
+![image-20230410215909269](Java八股整理.assets/image-20230410215909269.png)
 
 
 
@@ -5096,7 +5160,7 @@ Spring设计了三层缓存；
 
    - `Spring`事务底层使用了`AOP`，也就是通过`JDK`动态代理或者`cglib`，帮我们生成了代理类，在代理类中实现的事务功能。但如果某个方法用`final`修饰了，那么在它的代理类中，就无法重写该方法，从而无法添加事务功能。这种情况事务就会在`Spring`中失效。
 
-4. 同一个类中的方法相互调用（自身调用事务方法，事务会失效）
+4. 同一个类中的一个方法调用了另一个声明@Transactional的方法，即非事务方法调用事务方法（自身调用事务方法，事务会失效）
 
    > 怎么解决？ 
    >
@@ -5118,7 +5182,14 @@ Spring设计了三层缓存；
 
 #### 22 @Transactional原理
 
-- 通过一个TransactionInterceptor拦截了方法，然后织入切面。
+- 通过一个`TransactionInterceptor`（是一个`methodInterceptor`  CGLIB中的）拦截了方法，然后织入切面。其中`TransactionInterceptor`只起目标方法调用`invoke`的作用，主要的逻辑实现在他的父类`TransactionAspectSupport`（AspectJ也是基于这个），的`invokeWithinTransaction`方法中。另外`TransactionAspectSupport`使用了策略设计模式(Strategy)。它会使用一个外部指定的`PlatformTransactionManager`==ptm==来执行事务管理逻辑，并且使用一个外部指定的`TransactionAttributeSource`==tas==用来获取事务定义信息，也就是@Transactional这种注解上的信息。
+
+便于理解：`TransactionInterceptor`被作为一个Bean注册到容器中，应用启动时，Spring的自动代理机制会发现`TransactionInterceptor`，并将他包裹到添加了@Transaction的方法。
+
+1. 获取方法上标注的注解的元数据，包括传播行为、隔离级别、异常配置等信息。
+2. 通过ThreadLocal获取事务上下文，检查是否已经激活事务。
+3. 如果已经激活事务，则根据传播行为，看是否需要新建事务。
+4. 开启事务，先通过数据库连接池获取链接，关闭链接的autocommit，然后在try catch里反射执行真正的数据库操作，通过异常情况来决定是commit还是rollback。
 
 ---
 
@@ -5142,7 +5213,7 @@ springboot的**自动装配**实际上就是为了从**spring.factories**文件�
 
 1. 创建一个新的maven项目，作为自定义starter的项目。
 
-2. 项目的pom。xml文件中,添加springboot依赖
+2. 项目的pom.xml文件中,添加springboot依赖
 
 3. 创建一个自动配置类
 
@@ -5236,8 +5307,6 @@ public Object invoke(MethodInvocation invocation) throws Throwable {
 
 ## Redis
 
-
-
 #### 1. **Redis 是什么？**   ✅
 
 Redis（全称：Remote Dictionary Server 远程字典服务）是一个开源的使用 ANSI C 语言编写、**支持网络、可基于内存亦可持久化的日志型、Key-Value 非关系型数据库**，并提供多种语言的 API。
@@ -5260,12 +5329,12 @@ Redis（全称：Remote Dictionary Server 远程字典服务）是一个开源�
 
 ![img](Java八股整理.assets/1218593-20200508090955090-2110581654.png)
 
-- Redis单线程并不是整个Redis实例只有一个线程，是指文件时间分派器的队列这边只有一个线程，网络套接字处理部分还是多线程的。
+- Redis单线程并不是整个Redis实例只有一个线程，是指文件事件分派器的队列这边只有一个线程，网络套接字处理部分还是多线程的。
 - 多个套接字-IO多路复用监听套接字-文件事件队列-文件事件分派器-执行。
 
 #### 2. **Redis一般都有哪些使用场景？**   ✅
 
-![img](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/640-1695701198326-8.webp)
+![img](Java八股整理.assets/640-1695701198326-8.webp)
 
 **Redis适合的场景**
 
@@ -5278,7 +5347,7 @@ Redis（全称：Remote Dictionary Server 远程字典服务）是一个开源�
 7. Session共享：Session是保存在服务器的文件中，如果是集群服务，同一个用户过来可能落在不同机器上，这就会导致用户频繁登录；采用Redis保存Session后，无论用户落在哪台机器上都能够获取到对应的Session信息。
 8. **分布式锁**：
    - 锁的核心是“互斥”，使用`SETNX`命令实现互斥。如果key不存在才会设置key的值，并返回1，如果key存在则返回0。释放锁直接通过`DEL`命令即可。要给key设置一个过期时间防止锁无法释放。
-   - 为了防止**key过期而某个线程操作共享资源没结束**的情况，锁需要自动续期，为此**Redisson**使用一个专门监控和续期锁的Watch Dog实现锁续期。Redisson是要给开源的Java语言Redis客户端，还实现了可重入锁，公平锁等多种锁。
+   - 为了防止**key过期而某个线程操作共享资源没结束**的情况，锁需要自动续期，为此**Redisson**使用一个专门监控和续期锁的Watch Dog实现锁续期。Redisson是一个开源的Java语言Redis客户端，还实现了可重入锁，公平锁等多种锁。
 9. 时效信息控制。
 
 **Redis不适合的场景**
@@ -5307,15 +5376,15 @@ Redis 是基于内存的操作，CPU 不是 Redis 的瓶颈，Redis 的瓶颈最
 
 2. **Hash（哈希/散列）**
 
-   在 Redis中哈希类型是指Key本身是一种键值对结构，一个Key存储了多对Filed-Value。
+   在 Redis中哈希类型是指Key本身是一种键值对结构，一个Key存储了多对Field-Value。
 
    使用场景：哈希结构相对于字符串序列化缓存信息更加直观，并且在更新操作上更加便捷。所以常常用于存储对象信息，但是哈希类型和关系型数据库有所不同，**哈希类型是稀疏的，而关系型数据库是完全结构化的**，关系型数据库可以做复杂的关系查询，而 Redis 去模拟关系型复杂查询开发困难且维护成本高。
 
 3. **List（列表）**
 
-   列表类型是用来储存多个有序的字符串，列表中的每个字符串成为元素，一个列表最多可以储存 2 ^ 32 - 1 个元素，在 Redis 中，可以队列表两端插入和弹出，还可以获取指定范围的元素列表、获取指定索引下的元素等，列表是一种比较灵活的数据结构，它可以充当栈和队列的角色。
+   列表类型是用来储存多个有序的字符串，列表中的每个字符串成为元素，一个列表最多可以储存 2 ^ 32 - 1 个元素，在 Redis 中，可以对列表两端插入和弹出，还可以获取指定范围的元素列表、获取指定索引下的元素等，列表是一种比较灵活的数据结构，它可以充当栈和队列的角色。
 
-   使用场景：Redis 的 lpush + brpop 命令组合即可实现阻塞队列，生产者客户端是用 lpush 从列表左侧插入元素，多个消费者客户端使用 brpop 命令阻塞式的“抢”列表尾部的元素，多个客户端保证了消费的负载均衡和高可用性。
+   使用场景：Redis 的 lpush + brpop 命令组合即可实现阻塞队列，生产者客户端是用 lpush 从列表左侧插入元素，多个消费者客户端使用 brpop(没有元素时等待指定时间) 命令阻塞式的“抢”列表尾部的元素，多个客户端保证了消费的负载均衡和高可用性。
 
    ![img](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/640-1695701198326-9.webp)
 
@@ -5333,7 +5402,7 @@ Redis 是基于内存的操作，CPU 不是 Redis 的瓶颈，Redis 的瓶颈最
 
 #### 7.  String和Hash哪个存储Java对象数据比较好
 
-- String存储的是序列化Serialize后的对象数据，存放的是整个对象。Hash是把对象的每个字段单独存储成Field-Key键值对。
+- String存储的是序列化Serialize后的对象数据，存放的是整个对象。Hash是把对象的每个字段单独存储成Field-Value键值对。
 - 如果字段**经常变动或者查询**，用Hash，比如购物车。
 - 如果**系统对性能和资源消耗敏感**，用String，因为String存储消耗的内存小，存储有多层嵌套的对象也方便很多。
 
