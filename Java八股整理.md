@@ -5169,7 +5169,29 @@ Spring设计了三层缓存；
 
 5. 异常内部捕捉，没有抛出
 
-6. 异常类型错误
+6. 异常类型错误（spring事务默认只能接收runtime exception，可以通过rollbackfor添加别的）
+
+```java
+@Transactional
+public void add(){//直接调用本类的方法是不会动态代理的
+    query();//或者改为((UserService)AopContext.currentProxy()).query()
+}
+@Transactional
+public void query(){}
+
+↓
+
+@Autowired
+UserService userService;
+@Transactional
+public void add(){
+    userService.query();
+}
+@Transactional
+public void query(){}
+```
+
+
 
 #### 21. 过滤器Filter和拦截器Interceptors区别
 
@@ -5180,7 +5202,7 @@ Spring设计了三层缓存；
 - Filter过滤器是针对访问请求的过滤，可以做到每个请求只有一次的过滤要求；拦截器因为本身是Java的概念，所以他只能拦截一些接口方法，做一些参数填充等等的工作。
 - 过滤器**只能被请求调用一次**，拦截器不一样，**同一个请求可以通过方法进入拦截器多次**，次数不做限制。
 
-#### 22 @Transactional原理
+#### 22 @Transactional原理（try catch了要添加事务的方法）
 
 - 通过一个`TransactionInterceptor`（是一个`methodInterceptor`  CGLIB中的）拦截了方法，然后织入切面。其中`TransactionInterceptor`只起目标方法调用`invoke`的作用，主要的逻辑实现在他的父类`TransactionAspectSupport`（AspectJ也是基于这个），的`invokeWithinTransaction`方法中。另外`TransactionAspectSupport`使用了策略设计模式(Strategy)。它会使用一个外部指定的`PlatformTransactionManager`==ptm==来执行事务管理逻辑，并且使用一个外部指定的`TransactionAttributeSource`==tas==用来获取事务定义信息，也就是@Transactional这种注解上的信息。
 
