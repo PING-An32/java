@@ -717,7 +717,7 @@ int index = hash(key) & (n-1);  // 计算index方法
   2. 然后在通过哈希值和索引算法计算index，看数组是否存在该数据，不存在就新增node节点存储，然后方法结束。
   3. 如果目标index上存在数据，则需要用equals方法判断key的内容，要是判断命中，就是替换value，方法结束。
   4. 要是key内容不一样，索引一样，那么就是**哈希冲突**，HashMap解决哈希冲突的策略就是遍历链表，找到最后一个空节点，存储值。如果是JDK1.8，那么如果是红黑树，就是执行红黑树的添加逻辑。
-  5. JDK1.8：如果判断**数组长度是否大于等于64**，**链表长度是否大于等于8**，如果不是就执行6扩容逻辑。如果是，则需要把链表转换成红黑树。
+  5. JDK1.8：如果判断**数组长度是否大于等于64**，**链表长度是否大于等于8**，如果不是就执行6扩容逻辑。如果是，则需要把链表转换成红黑树。小于64就会resize 大于8就会treeifybin
   6. 最后一步就是判断是否到**扩容阀值**，容量达到阀值后，进行一次扩容，按照2倍的规则进行扩容，因为要遵循哈希表的长度必须是2次幂的概念。
 
 - **`get()`原理**：核心逻辑就是取出来索引上的节点，是链表的话挨个匹配hash和equals，直到找出节点。
@@ -5619,7 +5619,7 @@ Random：随机
 
 #### 14. **Redis 持久化有几种方式？**   ✅
 
-![捕获19](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/%E6%8D%95%E8%8E%B719-1612333283765.png)
+![捕获19](Java八股整理.assets/捕获19-1612333283765.png)
 
 **持久化**：使用缓存时，要经常把内存数据保存到硬盘中，保证之后可以重用数据（比如重启机器、机器故障之后恢复数据）或数据同步（比如 Redis 集群的主从节点通过 RDB 文件同步数据）。
 
@@ -5699,7 +5699,7 @@ AOF重写是一个有歧义的名字，该功能是通过读取数据库中的�
 
 在执行 BGREWRITEAOF 命令时，Redis 服务器**会维护一个 AOF 重写缓冲区**，该缓冲区会在子进程创建新AOF文件期间，记录服务器执行的所有写命令。当子进程完成创建新AOF文件的工作之后，服务器会将重写缓冲区中的所有内容追加到新AOF文件的末尾，使得新旧两个AOF文件所保存的数据库状态一致。最后，服务器用新的AOF文件替换旧的AOF文件，以此来完成AOF文件重写操作
 
-![捕获28](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/%E6%8D%95%E8%8E%B728-1612168091467-1612333283765.png)
+![捕获28](Java八股整理.assets/捕获28-1612168091467-1612333283765.png)
 
 - **更多内容可以查看我的这篇文章：**
   - [Redis持久化](https://snailclimb.gitee.io/javaguide/#/Redis持久化)
@@ -5721,7 +5721,7 @@ Redis集群有三种模式：**主从模式，哨兵模式，cluster(集群)模�
 * 哨兵模式：加入哨兵节点，对异常的主节点进行下线，然后投票选举新的主节点。
 * cluster模式保证高并发，整个集群分担所有的数据，不同的key会放到不同的redis中，每个redis对应一部分槽。
 
-![](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/%E6%8D%95%E8%8E%B740-1612333283766.png)
+![](Java八股整理.assets/捕获40-1612333283766.png)
 
 可以搭建主从复制来保证Redis的高可用。
 
@@ -5753,7 +5753,7 @@ Redis集群有三种模式：**主从模式，哨兵模式，cluster(集群)模�
 
 哨兵(sentinel) 是一个**分布式系统**，用于对主从结构中的每台服务器进行**监控**，当出现故障时通过投票机制**选择**新的master并将所有slave连接到新的master。哨兵也是Redis服务器，但是**不存储数据**。
 
-![捕获48](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/%E6%8D%95%E8%8E%B748-1612333283766.png)
+![捕获48](Java八股整理.assets/捕获48-1612333283766.png)
 
 ##### 监控
 
@@ -6153,7 +6153,7 @@ Kafka：吞吐量高，拉取模型，高可用
 
 换个问题：让你设计一个消息队列，你准备怎么设计
 
-![image-20230207213257674](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230207213257674.png)
+![image-20230207213257674](Java八股整理.assets/image-20230207213257674.png)
 
 **RocketMQ主要由四个部分组成：**
 
@@ -6165,7 +6165,7 @@ Kafka：吞吐量高，拉取模型，高可用
 
 `Broker`:主要负责消息的存储、投递和查询以及服务高可用保证。Broker是消息存放的实际位置。一个Broker上可以存放多个Topic，而每个Topic也可以配置在多个Broker上。一个Topic内还配置了多个队列。
 
-![消息队列架构图](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230203162856554.png)
+![消息队列架构图](Java八股整理.assets/image-20230203162856554.png)
 
 #### **RokcetMQ底层存储机制**
 
@@ -6177,7 +6177,7 @@ RokcetMQ一般是最终是存储在磁盘上的。
 
 **IndexFile**： 提供了⼀种可以通过key或时间区间来查询消息的⽅法。
 
-![img](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/16ef388763c25c62.jpg)
+![img](Java八股整理.assets/16ef388763c25c62.jpg)
 
 ### 分布式/微服务
 
@@ -6195,7 +6195,7 @@ RokcetMQ一般是最终是存储在磁盘上的。
 
 因此，**分布式系统理论上不可能选择 CA 架构，只能选择 CP 或者 AP 架构。**强一致性的系统采用CP架构，高可用的系统采用AP架构（会产生数据不一致的问题）。
 
-![img](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/v2-2f26a48f5549c2bc4932fdf88ba4f72f_720w.webp)
+![img](Java八股整理.assets/v2-2f26a48f5549c2bc4932fdf88ba4f72f_720w.webp)
 
 #### 说说对BASE理论的理解
 
@@ -6227,11 +6227,11 @@ JDK 自带的 **本地锁** 来控制一个 JVM 进程内的多个线程对本�
 
 **Redisson**: Redisson 中的分布式锁自带自动续期机制，使用起来非常简单，原理也比较简单，其提供了一个专门用来监控和续期锁的 **Watch Dog（ 看门狗）**，如果操作共享资源的线程还未执行完成的话，Watch Dog 会不断地延长锁的过期时间，进而保证锁不会因为超时而被释放。
 
-![Redisson 看门狗自动续期](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/distributed-lock-redisson-renew-expiration.png)
+![Redisson 看门狗自动续期](Java八股整理.assets/distributed-lock-redisson-renew-expiration.png)
 
 **RedLock:**  由于 Redis 集群数据同步到各个节点时是异步的，如果在 Redis 主节点获取到锁后，在没有同步到其他节点时，Redis 主节点宕机了，此时新选举出来的 Redis 主节点依然可以获取锁，所以多个应用服务就可以同时获取到锁。
 
-![img](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/redis-master-slave-distributed-lock.png)
+![img](Java八股整理.assets/redis-master-slave-distributed-lock.png)
 
 RedLock算法流程：让客户端向 Redis 集群中的多个独立的 Redis 实例依次请求申请加锁，**如果客户端能够和半数以上的实例成功地完成加锁操作，那么我们就认为，客户端成功地获得分布式锁**，否则加锁失败。即使部分 Redis 节点出现问题，只要保证 Redis 集群中有半数以上的 Redis 节点可用，分布式锁服务就是正常的。
 
@@ -6265,7 +6265,7 @@ RedLock的缺点有：
 
 分布式 ID 是分布式系统下的 ID。当表中的数据量过大时，要进行分库分表，分库之后，数据分布在不同的服务器上，数据库的自增主键已经没办法满足生成的主键唯一了，就引入了分布式ID。
 
-![img](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/distributed-id-requirements.png)
+![img](Java八股整理.assets/distributed-id-requirements.png)
 
 **全局唯一** ：ID 的全局唯一性肯定是首先要满足的！
 
@@ -6335,13 +6335,13 @@ Snowflake 是 Twitter 开源的分布式 ID 生成算法。Snowflake 由 64 bit 
 
 **如果节点数量发生了变化，也就是在对系统做扩容或者缩容时，必须迁移改变了映射关系的数据**，否则会出现查询不到数据的问题。而且迁移成本非常高，因为**大部分映射关系发生了改变**了。
 
-![image-20230716215005461](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230716215005461.png)
+![image-20230716215005461](Java八股整理.assets/image-20230716215005461.png)
 
-![image-20230716215013350](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230716215013350.png)
+![image-20230716215013350](Java八股整理.assets/image-20230716215013350.png)
 
 哈希算法是对节点的数量进行取模运算，而**一致哈希算法是对 2^32 进行取模运算，是一个固定的值**。
 
-<img src="https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230716215249551.png" alt="哈希环" style="zoom:33%;" />
+<img src="Java八股整理.assets/image-20230716215249551.png" alt="哈希环" style="zoom:33%;" />
 
 一致性哈希要进行两步哈希：
 
@@ -6353,11 +6353,11 @@ Snowflake 是 Twitter 开源的分布式 ID 生成算法。Snowflake 由 64 bit 
 
 缺点：**一致性哈希算法虽然减少了数据迁移量，但是存在节点分布不均匀的问题**
 
-<img src="https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230716215436391.png" alt="image-20230716215436391" style="zoom: 67%;" />
+<img src="Java八股整理.assets/image-20230716215436391.png" alt="image-20230716215436391" style="zoom: 67%;" />
 
 解决方案：通过虚拟节点映射到实际节点，简历两层映射关系。而虚拟节点在Hash环上是均匀分布的。
 
-![image-20230716215525852](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230716215525852.png)
+![image-20230716215525852](Java八股整理.assets/image-20230716215525852.png)
 
 ### Docker
 
@@ -6419,7 +6419,7 @@ Docker 设计时，就充分利用 **Union FS** 的技术，将其设计为**分
 
 分层存储的特征还使得镜像的复用、定制变的更为容易。甚至可以用之前构建好的镜像作为基础层，然后进一步添加新的层，以定制自己所需的内容，构建新的镜像。
 
-<img src="https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230528160721341.png" alt="image-20230528160721341" style="zoom: 33%;" />
+<img src="Java八股整理.assets/image-20230528160721341.png" alt="image-20230528160721341" style="zoom: 33%;" />
 
 当容器启动时，一个新的可写层被加载到镜像的顶部。这一层通常被称作“容器层”，“容器层”之下的都叫“镜像层”。
 
@@ -6429,7 +6429,7 @@ Docker 设计时，就充分利用 **Union FS** 的技术，将其设计为**分
 
 Dockerfile是用来构建Docker镜像的文本文件，是由一条条构建镜像所需的指令和参数构成的脚本。
 
-<img src="https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230528161136152.png" alt="image-20230528161136152" style="zoom: 80%;" />
+<img src="Java八股整理.assets/image-20230528161136152.png" alt="image-20230528161136152" style="zoom: 80%;" />
 
 构建三步骤
 
@@ -6498,7 +6498,7 @@ SELECT * FROM user WHERE username="Amy"
 
 #### 十大排序
 
-![image-20230723161145633](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230723161145633.png)
+![image-20230723161145633](Java八股整理.assets/image-20230723161145633.png)
 
 稳定：如果A原本在B前面，而A=B，排序之后A仍然在B的前面；
 不稳定：如果A原本在B的前面，而A=B，排序之后A可能会出现在B的后面；
@@ -6523,7 +6523,7 @@ Out-place：占用额外内存。
 
 * 最坏情况：
 
-  ![image-20230216171313858](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230216171313858.png)
+  ![image-20230216171313858](Java八股整理.assets/image-20230216171313858.png)
 
 #### 堆排序
 
@@ -6846,7 +6846,7 @@ public class Singleton {
 
 值得注意的是，布隆过滤器的误报率和m（位数组的大小）以及k（哈希函数的数量）有关。当m和k选择得当时，布隆过滤器是非常高效的。
 
-![布隆过滤器hash计算](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8-hash%E8%BF%90%E7%AE%97.png)
+![布隆过滤器hash计算](Java八股整理.assets/布隆过滤器-hash运算.png)
 
 #### 两个栈实现线程安全队列
 
@@ -7091,11 +7091,24 @@ public class NoRepeatSubmitAspect {
 - 涉及的表：`shopping_cart`、`orders`、`order_detail`。
 
 - 每个用户有个user_id，当添加购物车时，会在购物车表`shopping_cart`中添加一行记录或者更改商品数量。
+
 - 每个用户的user_id都会对应`shopping_cart`中多个行。
+
 - 提交订单时，查询`shopping_cart`中user_id对应的行，查找出一个`List<ShoppingCart>`，表示用户的购物车里的商品集合。
+
 - `shopping_cart`表中每行记录都有`dish_id`和`setmeal_id`，用来查询购物车一条记录对应着什么菜品或者套餐。
+
 - 下单后一个用户的所有`shopping_cart`行封装成`order`表中的一个订单行记录，这个行记录有个`order_id`，有个`name`（实际上就是`order_id`）。此外，`order`表中保存着订单的下单用户，电话，地址等信息。
+
 - 然后要查询订单内容的话，通过`order`表的`name`（实际上就是`order_id`）去查询`order_detail`表，有可能一个`order_id`对应了多个`order_detail`表中行，也就是多个商品、商品数量。
+
+  分类中有分类id   分菜品1和套餐2
+  菜品中有菜品id和分类id
+  菜品口味中有口味id和菜品id
+  订单表有订单id用户id地址id
+  订单明细表中有订单id，菜品id或者套餐id（有一个为null），菜品口味
+  套餐里面有套餐id，分类id
+  套餐菜品表中有 套餐菜品id 和 套餐id 和 菜品id
 
 #### 防止菜品超售——MySQL行锁
 
@@ -7168,3 +7181,17 @@ wrapperDish.in(Dish::getId,dishAmount.keySet().stream().collect(Collectors.toLis
 #### 项目后端部署
 
 - 使用`mvn clean package`进行打包，打成一个`jar`包后，通过`java -jar xxxx.jar`启动。
+
+
+
+## 学成在线
+
+VO DTO PO
+
+@RestController(@ResponseBody+@Controller)只能返回json不能返回http页面
+
+ajax不允许 跨域请求：如果协议、主机、端口有一个不一致就是跨域http://localhost:8601
+
+解决方法：①JSONP	②添加响应头Access-Control-Allow-Origin	③通过nginx代理
+
+![image-20240708183016930](Java八股整理.assets/image-20240708183016930.png)
