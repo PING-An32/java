@@ -3842,7 +3842,7 @@ Linux排查步骤：
 
 #### 4.创建线程的几种方法✅
 
-* 继承Thread类实现
+* 继承Thread类（实现了Runnable接口，run方法内是调用了传入的runnable对象的run方法），重写run方法实现
 
 ```java
 //通过继承Thread类创建线程
@@ -3855,7 +3855,7 @@ Thread t1 = new Thread("t1" ){
 t1.start();
 ```
 
-* 使用 Runnable 配合 Thread
+* 使用 Runnable（是一个接口，有一个抽象方法run()） 配合 Thread
 
 ```java
 //通过实现Runable接口创建线程
@@ -3872,10 +3872,10 @@ Thread t3 = new Thread(() -> {
 t2.start();
 ```
 
-* 实现Callable接口
+* 实现Callable接口（函数式接口，有一个call方法）
 * FutureTask 配合 Thread实现
 
-​	FutureTask 能够接收 Callable 类型的参数，用来处理**有返回结果**的情况
+​	FutureTask 能够接收 Callable 类型的参数（由于是函数式接口，可以用lambda表达式），用来处理**有返回结果**的情况
 
 ```java
 //FutureTask实现
@@ -4170,7 +4170,7 @@ public class Main {
 + 文件下载（IO密集）
 + Tomcat：Tomcat内部采用多线程，上百个客户端同时访问一个Web应用时，Tomcat接入后就是把后续的处理交给一个新的线程处理
 + 异步可以用多线程
-+ 同时调下游接口。
++ 同时调下游接口。（同时调用5个下游接口，获取返回的数据再合并）
 
 #### 3. 并发的三大特性和线程安全性
 
@@ -4198,7 +4198,7 @@ public class Main {
 
 ### 同步（锁）
 
-#### 1 synchronized
+#### 1 synchronized（001表示无锁   101表示偏向锁  00表示轻量级锁  10表示重量级锁）
 
 可重入，非公平。
 
@@ -4220,7 +4220,13 @@ public class Main {
 
 - 监视器或管程，每个Java对象都可以关联一个Monitor。用synchronized给对象上锁（重量级）后，对象的Mark Word中设置了指向Monitor对象的指针。Monitor底层是操作系统的Mutex Lock，要进行用户态到内核态转换，开销很大。
 
-<img src="https://cdn.nlark.com/yuque/0/2024/png/35332943/1704558135955-323af34f-e5b4-4bb0-be81-4b06b3cb5e5e.png?x-oss-process=image%2Fresize%2Cw_670%2Climit_0" alt="image.png" style="zoom: 67%;" />
+  ```
+  BLOCKED和WAITING都是阻塞状态，不占用CPU时间片。当Owner释放锁时BLOCKED被唤醒，当调用notify时WAITING被唤醒（重新进入EntryList）。
+  
+  当Owner调用wait时进入WaitSet。wait和notify必须要是当前获得锁的线程才可以调用。（notify是挑一个唤醒,notifyall是唤醒所有waitset中的线程）
+  ```
+
+  <img src="https://cdn.nlark.com/yuque/0/2024/png/35332943/1704558135955-323af34f-e5b4-4bb0-be81-4b06b3cb5e5e.png?x-oss-process=image%2Fresize%2Cw_670%2Climit_0" alt="image.png" style="zoom: 67%;" />
 
 - Owner：持有锁的线程
 - EntryList：想要获取锁但是阻塞的线程
@@ -4231,21 +4237,25 @@ public class Main {
 - https://www.cnblogs.com/wuqinglong/p/9945618.html
 - 早期的synchronized是重量级锁，效率低下，利用的是对象的**monitor**实现加锁，而monitor底层使用的是操作系统的mutex lock，需要用户态到内核态的转换，因此效率低。
 - 优化：无锁->偏向锁->轻量级锁->重量级锁，锁只能升级不能降级。
-- synchronized关键字用Java对象作为锁，而Java的对象头含有一个**32位的Mark Word**，它主要记录的锁的几种状态。每个线程的栈帧都会包含一个锁记录（Lock Record）的对象，内部可以存储锁定对象的 Mark Word。
+- synchronized关键字用Java对象作为锁，而Java的对象头含有一个**32位的Mark Word**，它主要记录的锁的几种状态。**==在调用synchronized关键字后会在当前线程当前方法的栈帧创建一个锁记录（Lock Record）的对象，见下图，是JVM层面的，存了对象的指针，以及对象的Markword==**，内部可以存储锁定对象的 Mark Word。
 
 ![image-20220519165517648](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20220519165517648.png)
 
-* **偏向锁**：引入偏向锁和引入轻量级锁的目的很像，它们都是考虑到没有多线程竞争的情况下，减少传统重量级锁加锁解锁操作引起的性能消耗。偏向锁顾名思义，即偏向第一个线程，在接下来的执行过程中，只会检查线程ID是否为**Mark Word记录的线程ID**。它和轻量级锁不同的地方是，**轻量级锁会在无竞争的情况下使用CAS操作去替代对象头中的Mark Word，而偏向锁在无竞争的情况下会把整个同步都消除掉，连CAS操作都没有了**。当有其他线程来竞争的时候，偏向锁会先升级为轻量级锁。
-* **轻量级锁**：轻量级锁是一种乐观锁的设计方式，**它加锁和解锁都用了CAS操作**。它也是为了在没有竞争的情况下，避免申请互斥量的开销。轻量级锁会用CAS操作替换对象头的Mark word, 在解锁的时候，将对象原来的Mark Word返回。
+* **偏向锁**(默认开启，但是会有启动延时；调用hashcode方法会使偏向锁失效)：引入偏向锁和引入轻量级锁的目的很像，它们都是考虑到没有多线程竞争的情况下，减少传统重量级锁加锁解锁操作引起的性能消耗。偏向锁顾名思义，即偏向第一个线程，在接下来的执行过程中，只会检查线程ID是否为**Mark Word记录的线程ID**。它和轻量级锁不同的地方是，**轻量级锁会在无竞争的情况下使用CAS操作去替代对象头中的Mark Word，而偏向锁在无竞争的情况下会把整个同步都消除掉，连CAS操作都没有了**。当有其他线程来竞争的时候，偏向锁会先升级为轻量级锁。
+* **轻量级锁**：轻量级锁是一种乐观锁的设计方式，**它加锁和解锁都用了CAS操作**。它也是为了在没有竞争的情况下，避免申请互斥量的开销。轻量级锁会用CAS操作替换对象头的Mark word, 在解锁的时候，将对象原来的Mark Word返回。（用于错开时间的多线程访问，CAS失败会升级成重量级锁）
 
 ​															![image-20220519170247282](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20220519170247282.png)
 
-* **重量级锁**：如果有另一个线程来竞争锁，该线程的CAS操作（获取轻量级锁）失败，会进入锁膨胀的过程，将轻量级锁升级为重量级锁。即为Object对象申请Monitor锁，将Object的Mark word改为指向monitor对象的指针，然后自己的线程进入EntryList阻塞。
+* **重量级锁**：如果有另一个线程来竞争锁，该线程的CAS操作（获取轻量级锁）失败，会进入锁膨胀的过程，将轻量级锁升级为重量级锁。
+
+  新加入的线程即为Object对象申请Monitor锁，将Object的Mark word改为指向monitor对象的指针，然后自己的线程进入EntryList阻塞。
+
+  原来的线程在释放锁想要将对象头赋回给对象时发现锁末尾变成10，即重量级锁，则将monitor的Owner置空，唤醒EntryList中线程。
 
 ![image-20220519171107163](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20220519171107163.png)
 
 * **自旋锁**：轻量级锁失败后，虚拟机为了避免线程真实地在操作系统层面挂起，还会进行一项称为自旋锁的优化手段。**再尝试几次获取锁的过程。**
-* **锁消除**：指的就是虚拟机即使编译器在运行时，如果检测到那些共享数据不可能存在竞争（**JVM逃逸分析**），那么就执行锁消除。 锁消除可以节省毫无意义的请求锁的时间。
+* **锁消除**：指的就是虚拟机即时编译器在运行时，如果检测到那些共享数据不可能存在竞争（**JVM逃逸分析**），那么就执行锁消除。 锁消除可以节省毫无意义的请求锁的时间。
 * **锁粗化**：将锁加粗，提升性能，**防止对一个对象反复加锁和解锁**。
 
 ##### 1.5 谈谈 synchronized 和 ReentrantLock 的区别？
@@ -4269,7 +4279,21 @@ public class Main {
 
   * 对volatile变量的写指令之后会加入写屏障，写屏障（sfence）保证在**该屏障之前**，对共享变量的改动，都同步到主存当中。
 
+    ```java
+    public void writeBarrier(I_result r){
+        num=2;
+        ready=true;//ready是volatile修饰的
+        //写屏障   所有变量的更改都会同步到主存中，不仅仅是ready，num也会
+    }
+    ```
+  
   * 对volatile变量的读指令之前会加入读屏障，读屏障（lfence）保证在**该屏障之后**，对共享变量的读取，加载的是主存中最新数据。
+  
+    ```java
+    
+    ```
+  
+    
 
 
 - **如何防止指令重排，保证有序性**：
@@ -5662,7 +5686,7 @@ save 900 1           #在900秒(15分钟)之后，如果至少有1个key发生�
 
 save 300 10          #在300秒(5分钟)之后，如果至少有10个key发生变化，Redis就会自动触发BGSAVE命令创建快照。
 
-save 60 10000        #在60秒(1分钟)之后，如果至少有10000个key发生变化，Redis就会自动触发BGSAVE命令创建快照。Copy to clipboardErrorCopied
+save 60 10000        #在60秒(1分钟)之后，如果至少有10000个key发生变化，Redis就会自动触发BGSAVE命令创建快照。
 ```
 
 **AOF（append-only file）持久化**
@@ -5670,7 +5694,7 @@ save 60 10000        #在60秒(1分钟)之后，如果至少有10000个key发生
 与快照持久化相比，AOF持久化 的实时性更好，因此已成为主流的持久化方案。默认情况下Redis没有开启AOF（append only file）方式的持久化，可以通过appendonly参数开启：
 
 ```conf
-appendonly yesCopy to clipboardErrorCopied
+appendonly yes
 ```
 
 开启AOF持久化后每执行一条会更改Redis中的数据的命令，Redis就会将该命令写入硬盘中的AOF文件。AOF文件的保存位置和RDB文件的位置相同，都是通过dir参数设置的，默认的文件名是appendonly.aof。
@@ -5680,16 +5704,16 @@ appendonly yesCopy to clipboardErrorCopied
 ```conf
 appendfsync always    #每次有数据修改发生时都会写入AOF文件,这样会严重降低Redis的速度
 appendfsync everysec  #每秒钟同步一次，显示地将多个写命令同步到硬盘
-appendfsync no        #让操作系统决定何时进行同步Copy to clipboardErrorCopied
+appendfsync no        #让操作系统决定何时进行同步
 ```
 
 为了兼顾数据和写入性能，用户可以考虑 appendfsync everysec选项 ，让Redis每秒同步一次AOF文件，Redis性能几乎没受到任何影响。而且这样即使出现系统崩溃，用户最多只会丢失一秒之内产生的数据。当硬盘忙于执行写入操作的时候，Redis还会优雅的放慢自己的速度以便适应硬盘的最大写入速度。
 
 **Redis 4.0 对于持久化机制的优化**
 
-Redis 4.0 开始支持 RDB 和 AOF 的混合持久化（默认关闭，可以通过配置项 `aof-use-rdb-preamble` 开启）。
+Redis 4.0 开始支持 RDB 和 AOF 的混合持久化（默认关闭，可以通过配置项 `aof-use-rdb-preamble` 开启，指使用rdb前缀）。
 
-如果把混合持久化打开，AOF 重写的时候就直接把 RDB 的内容写到 AOF 文件开头。这样做的好处是可以结合 RDB 和 AOF 的优点, 快速加载同时避免丢失过多的数据。当然缺点也是有的， AOF 里面的 RDB 部分是压缩格式不再是 AOF 格式，可读性较差。
+如果把混合持久化打开，==AOF 重写的时候==就直接把 RDB 的内容写到 AOF 文件开头。这样做的好处是可以结合 RDB 和 AOF 的优点, 快速加载同时避免丢失过多的数据。当然缺点也是有的， AOF 里面的 RDB 部分是压缩格式不再是 AOF 格式，可读性较差。
 
 **补充内容：AOF 重写**
 
@@ -5774,6 +5798,7 @@ sentinel和其他sentinel协商主节点状态，**如果主节点挂了**，则
  优点：
 
 - 哨兵模式是基于主从模式的，所有主从的优点，哨兵模式都具有。
+- 应用端不需要更改访问地址。
 - 主从可以自动切换，系统更健壮，可用性更高。
 - Sentinel 会不断的检查 主服务器 和 从服务器 是否正常运行。当被监控的某个 Redis 服务器出现问题，Sentinel 通过API脚本向管理员或者其他的应用程序发送通知。
 
@@ -5799,10 +5824,14 @@ sentinel和其他sentinel协商主节点状态，**如果主节点挂了**，则
 
 **Redis Cluster 扩容缩容期间可以提供服务吗？**Redis Cluster 在扩容或缩容期间依然可以提供服务。在哈希槽被重新分配的过程中，Redis Cluster 可以继续处理客户端请求。这使得 Redis Cluster 能够实现无停机时间的容量调整。
 
+`redis-cli --cluster add-node 127.0.0.1:7006 127.0.0.1:7000`     其中7006为新加入节点，7000为集群中任一节点
+
 > Redis Cluster在扩容和缩容期间仍可以提供服务，原因主要有两方面：
 >
 > 1. **数据分片**：Redis Cluster通过将数据划分为16384个哈希槽的方式进行数据分片。每个节点负责维护一部分哈希槽及其对应的数据。当进行扩容或缩容时，只需将一部分哈希槽从一个节点迁移到另一个节点。在这个过程中，其他未被迁移的哈希槽和对应的数据仍可对外提供服务。
-> 2. **异步迁移**：在Redis Cluster扩容和缩容过程中，哈希槽的迁移是异步进行的，不会阻塞当前的数据读写操作。Redis Cluster支持在数据迁移过程中同时处理客户端的请求，因此扩容和缩容过程对服务的影响非常小。
+> 2. **异步迁移**：在Redis Cluster扩容和缩容过程中，哈希槽的迁移是异步进行的，不会阻塞当前的数据读写操作。Redis Cluster支持在数据迁移过程中同时处理客户端的请求，因此扩容和缩容过程对服务的影响非常小。在数据迁移的过程中，源节点会将属于迁移槽位的数据发送到目标节点，同时继续处理来自客户端的请求。如果在迁移期间有新的数据写入到迁移槽位，它们会被记录下来，并在迁移完成后一起发送到目标节点。
+
+![img](Java八股整理.assets/aHR0cHM6Ly91cGxvYWQtaW1hZ2VzLmppYW5zaHUuaW8vdXBsb2FkX2ltYWdlcy83Nzg5NDE0LWE4NzZkNGQxNDAzZDRiOWEucG5nP2ltYWdlTW9ncjIvYXV0by1vcmllbnQvc3RyaXB8aW1hZ2VWaWV3Mi8yL3cvNzk0L2Zvcm1hdC93ZWJw)
 
 **Redis Cluster 中的节点是怎么进行通信的**：Redis Cluster 中的节点使用了一种叫做 Gossip 的协议来通信。在这种协议中，每个节点会周期性地与其他节点交换信息，包括它们所负责的哈希槽范围、数据的版本等。这种通信方式使得每个节点都能了解到整个集群的状态，同时也支持集群中节点的动态添加和移除。
 
@@ -5819,7 +5848,7 @@ sentinel和其他sentinel协商主节点状态，**如果主节点挂了**，则
 
 **一致性哈希原理**：
 
-- 按照常用哈希算法将对应的key哈希到一个2^32次个桶的空间中，即0-(2^23)-1的数字空间中，将这些数字头尾相连形成闭合环形。
+- 按照常用哈希算法将对应的key哈希到一个2^32次个桶的空间中，即0-(2^32)-1的数字空间中，将这些数字头尾相连形成闭合环形。
 
 ![img](https://pic4.zhimg.com/80/v2-d74906e4f364e75905d7534b646e77a3_720w.webp)
 
@@ -6062,7 +6091,7 @@ if redis.get("key") == unique_value then
 
 - 如果使用Redis主从+哨兵模式，原先的Redis分布式锁会存在问题。比如客户端1在master上SET成功，然后master宕机了，从节点又没有同步客户端1的锁的key，然后从节点变成主节点之后，客户端2又来获取锁成功。此时客户端1和客户端2会同时操作共享变量。
 - 这里采用一个RedLock算法能够解决问题。RedLock算法首先要求Redis高可用采用的是**集群模式**。
-- 在所有的节点上都去SET锁，如果有一般以上的Redis实例中获取锁成功，那么加锁成功。
+- 在所有的节点上都去SET锁，如果有一半以上的Redis实例中获取锁成功，那么加锁成功。
 
 ## 其他框架和分布式理论
 
@@ -7190,8 +7219,46 @@ VO DTO PO
 
 @RestController(@ResponseBody+@Controller)只能返回json不能返回http页面
 
-ajax不允许 跨域请求：如果协议、主机、端口有一个不一致就是跨域http://localhost:8601
+ajax不允许 **跨域请求**：如果协议、主机、端口有一个不一致就是跨域http://localhost:8601
 
 解决方法：①JSONP	②添加响应头Access-Control-Allow-Origin	③通过nginx代理
 
 ![image-20240708183016930](Java八股整理.assets/image-20240708183016930.png)
+
+**mybatis分页插件原理：**分页参数放到ThreadLocal中，拦截器会拦截执行的sql语句，根据数据库类型添加对应的分页语句重写sql，例如：（select * from table where a）转换为
+
+（select count(*) from table where a）和（select * from table where a limit ）
+
+计算出了total总条数、pageNum当前第几页、pageSize每页大小和当前页的数据，是否为首页，是否为尾页，总页数等。
+
+```java
+@Configuration
+@MapperScan("com.xuecheng.content.mapper")//
+public class MybatisPlusConfig {
+    /**
+     * 定义分页拦截器
+     */
+    @Bean
+    public MybatisPlusInterceptor mybatisPlusInterceptor() {
+        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
+        return interceptor;
+    }
+}
+```
+
+**Mybatis ResultType和ResultMap区别：**当java对象属性名和表的字段名对应就可以直接使用ResultType，否则使用ResultMap来进行手工映射
+
+**#{}和${}区别：**#{}标记一个占位符，可以防止sql注入
+
+**全局异常处理：**@ControllerAdvice控制器增强，指定某一个方法对某一些异常类型进行捕获
+
+**参数合法性校验：**使用基于JSR-303的校验框架实现，在Controller上开启校验
+
+配置信息放在Nacos进行统一管理，项目会有多个实例。分为每个项目特有的配置，项目所公用的配置。
+
+Nacos使用namespace、group、dataid来定位一个配置文件
+
+一个配置文件由content-service-dev.yaml组成，服务名-环境名-后缀
+
+![image-20240709155444111](Java八股整理.assets/image-20240709155444111.png)
