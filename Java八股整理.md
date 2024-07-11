@@ -76,6 +76,10 @@
 
 public > protected > default > private
 
+   2. **子类与基类在同一包中**：被声明为 protected 的变量、方法和构造器能被同一个包中的任何其他类访问；
+
+   2. **子类与基类不在同一包中**：那么在子类中，子类实例可以访问其从基类继承而来的 protected 方法，而不能访问基类实例的protected方法。
+
 ![image.png](Java八股整理.assets/1703141023657-ee06c8ac-be9b-4fd5-bb65-8bb1c288628e.png)
 
 #### 6. 静态绑定和动态绑定（只有方法有）
@@ -276,7 +280,7 @@ public static void main(){
 
 在Java中将String设计成不可变的是综合考虑到各种因素的结果。主要的原因有以下三点：
 
-1. **字符串常量池的需要**：字符串常量池是Java堆内存中一个特殊的存储区域，当创建一个Str+ing对象时，假如此字符串已经存在于常量池中，则不会创建一个新的对象，而是引用已经存在的对象，**所以如果字符串可变，改变一个字符串可能会影响另一个独立对象**；
+1. **字符串常量池的需要**：字符串常量池是Java堆内存中一个特殊的存储区域，当创建一个String对象时，假如此字符串已经存在于常量池中，则不会创建一个新的对象，而是引用已经存在的对象，**所以如果字符串可变，改变一个字符串可能会影响另一个独立对象**；
 2. **允许String对象缓存HashCode**：Java中String对象的哈希码被频繁地使用，比如在HashMap等容器中。字符串不变性保证了hash码的唯一性，因此可以放心地进行缓存。这也是一种性能优化手段，意味着不必每次都去计算新的哈希码。
 3. **安全性**：String被许多的Java类（库）用来当做参数，例如：网络连接地址URL、文件路径path、还有反射机制所需要的String参数等，假若String不是固定不变的，将会引起各种安全隐患。
 
@@ -416,10 +420,10 @@ Error类和Exception类的父类都是Throwable类。主要区别如下：
 - **什么时候需要序列化和反序列化：**把对象状态保存到文件系统或数据库时；对象状态要通过网络传输时。
 - **序列化的实现过程：**需要序列化的类实现Serializable接口，然后创建一个输出流ObjectOutputStream对象，使用输出流对象的的writeObject()方法。反序列化使用输入流。
 - **transient关键字**用来修饰变量，被transient修饰的变量不会被序列化，反序列化时使用默认初值，比如int型是0，引用数据类型的是null；
-- 序列化不会序列**static变量**，因为这个是类变量。
+- 序列化不会序列**static变量**，因为这个是类变量。（序列化保存的是对象状态）
 - 序列化与反序列化属于TCP/IP中的应用层。
 - JDK自带序列化不常使用，因为**不安全**，**性能差**，**无法跨语言**。
-- serialVersionUID用来表示版本，反序列化时，会检查 serialVersionUID 是否和当前类的 serialVersionUID 一致。如果 serialVersionUID 不一致则会抛出 InvalidClassException 异常
+- static修饰的serialVersionUID是一个特例，用来表示版本，反序列化时，会检查 serialVersionUID 是否和当前类的 serialVersionUID 一致。如果 serialVersionUID 不一致则会抛出 InvalidClassException 异常
 - 常用序列化协议：Kryo；Protobuf
 
 #### 23. 常见语法糖
@@ -468,7 +472,7 @@ JVM不支持语法糖，语法糖都是编译器解糖之后成为`.class`文件
 
 [java注解的本质以及注解的底层实现原理-CSDN博客](https://blog.csdn.net/qq_20009015/article/details/106038023)
 
-- 注解`@interface`实际上是实现了Annotation接口的接口，在调用`getDeclaredAnnotations()`方法时，返回一个**代理类对象**，是通过**JDK动态代理**创建的（原理与spring里的动态代理一致）。在创建这个代理对象之前，解析注解的时候，从注解类的常量池中取出注解的信息，传入到**代理类对象**的构造函数中。
+- 注解`@interface`实际上是实现了Annotation接口的接口，在调用`getDeclaredAnnotations()`方法时，返回一个**代理类对象**`$Proxy`，是通过**JDK动态代理**创建的（原理与spring里的动态代理一致）。在创建这个代理对象之前，解析注解的时候，从注解类的常量池中取出注解的信息，传入到**代理类对象**的构造函数中。
 
 ## Java IO
 
