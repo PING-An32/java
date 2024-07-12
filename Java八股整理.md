@@ -809,8 +809,46 @@ SQL：非过程化语言，只需要知道要做什么，不必担心如何去�
 #### 1. MySQL字段类型
 
 - **数值类型**：整型（TINYINT、SMALLINT、MEDIUMINT、INT 和 BIGINT）、浮点型（FLOAT 和 DOUBLE）、定点型（DECIMAL）
+
 - **字符串类型**：CHAR、VARCHAR、TINYTEXT、TEXT、MEDIUMTEXT、LONGTEXT、TINYBLOB、BLOB、MEDIUMBLOB 和 LONGBLOB 等，最常用的是 CHAR 和 VARCHAR。
+
 - **日期时间类型**：YEAR、TIME、DATE、DATETIME 和 TIMESTAMP 等。
+
+  ```sql
+  group by一般和聚合函数一起使用，聚合函数即：AVG SUM MIN MAX COUNT
+  在SELECT列表中所有未包含在组函数中的列都应该包含在 GROUP BY子句中
+  
+  SELECT department_id, AVG(salary)
+  FROM employees
+  GROUP BY department_id ;
+  
+  SELECT department_id dept_id, job_id, SUM(salary)
+  FROM employees
+  GROUP BY department_id, job_id ;
+  
+  HAVING子句
+  1. 行已经被分组。
+  2. 使用了聚合函数。
+  3. 满足 HAVING 子句中条件的分组将被显示。
+  4. HAVING 不能单独使用，必须要跟 GROUP BY 一起使用。
+  
+  不得在WHERE子句中使用聚合函数
+  
+  DATABASE 和 TABLE
+  CREATE DROP
+  TABLE 独有
+  ALTER TABLE table_name: MODIFY(修改列，CHANGE也可以)/RENAME...TO.../ADD(新列)/DROP(删除列)
+  
+  上面是对表结构操作，下面是对表记录操作
+  INSERT INTO/TRUNCATE/DELETE FROM table_name
+  UPDATE employee SET addr='广东韶关' WHERE `name`='李四';
+  ```
+
+#### 2.WHERE和HAVING的区别
+
+**区别1：**WHERE 可以直接使用表中的字段作为筛选条件，但不能使用分组中的计算函数作为筛选条件；HAVING 必须要与 GROUP BY 配合使用，可以把分组计算的函数和分组字段作为筛选条件。
+**区别2：**如果需要通过连接从关联表中获取需要的数据，WHERE 是先筛选后连接，而 HAVING 是先连接后筛选。
+		WHERE 和 HAVING 也不是互相排斥的，我们可以在一个查询里面同时使用 WHERE 和 HAVING。包含分组统计函数的条件用 HAVING，普通条件用 WHERE。这样，我们就既利用了 WHERE 条件的高效快速，又发挥了 HAVING 可以使用包含分组统计函数的查询条件的优点。当数据量特别大的时候，运行效率会有很大的差别
 
 #### 2. **请说下你对MySQL架构的了解？**   ✅
 
