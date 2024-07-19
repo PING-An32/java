@@ -1,4 +1,6 @@
-## Java基础
+
+
+##  Java基础
 
 #### Java为什么是”编译与解释并存“的语言？（编译体现在JIT）
 
@@ -75,6 +77,10 @@
 #### 5. 访问修饰符
 
 public > protected > default > private
+
+   2. **子类与基类在同一包中**：被声明为 protected 的变量、方法和构造器能被同一个包中的任何其他类访问；
+
+   2. **子类与基类不在同一包中**：那么在子类中，子类实例可以访问其从基类继承而来的 protected 方法，而不能访问基类实例的protected方法。
 
 ![image.png](Java八股整理.assets/1703141023657-ee06c8ac-be9b-4fd5-bb65-8bb1c288628e.png)
 
@@ -276,7 +282,7 @@ public static void main(){
 
 在Java中将String设计成不可变的是综合考虑到各种因素的结果。主要的原因有以下三点：
 
-1. **字符串常量池的需要**：字符串常量池是Java堆内存中一个特殊的存储区域，当创建一个Str+ing对象时，假如此字符串已经存在于常量池中，则不会创建一个新的对象，而是引用已经存在的对象，**所以如果字符串可变，改变一个字符串可能会影响另一个独立对象**；
+1. **字符串常量池的需要**：字符串常量池是Java堆内存中一个特殊的存储区域，当创建一个String对象时，假如此字符串已经存在于常量池中，则不会创建一个新的对象，而是引用已经存在的对象，**所以如果字符串可变，改变一个字符串可能会影响另一个独立对象**；
 2. **允许String对象缓存HashCode**：Java中String对象的哈希码被频繁地使用，比如在HashMap等容器中。字符串不变性保证了hash码的唯一性，因此可以放心地进行缓存。这也是一种性能优化手段，意味着不必每次都去计算新的哈希码。
 3. **安全性**：String被许多的Java类（库）用来当做参数，例如：网络连接地址URL、文件路径path、还有反射机制所需要的String参数等，假若String不是固定不变的，将会引起各种安全隐患。
 
@@ -416,10 +422,10 @@ Error类和Exception类的父类都是Throwable类。主要区别如下：
 - **什么时候需要序列化和反序列化：**把对象状态保存到文件系统或数据库时；对象状态要通过网络传输时。
 - **序列化的实现过程：**需要序列化的类实现Serializable接口，然后创建一个输出流ObjectOutputStream对象，使用输出流对象的的writeObject()方法。反序列化使用输入流。
 - **transient关键字**用来修饰变量，被transient修饰的变量不会被序列化，反序列化时使用默认初值，比如int型是0，引用数据类型的是null；
-- 序列化不会序列**static变量**，因为这个是类变量。
+- 序列化不会序列**static变量**，因为这个是类变量。（序列化保存的是对象状态）
 - 序列化与反序列化属于TCP/IP中的应用层。
 - JDK自带序列化不常使用，因为**不安全**，**性能差**，**无法跨语言**。
-- serialVersionUID用来表示版本，反序列化时，会检查 serialVersionUID 是否和当前类的 serialVersionUID 一致。如果 serialVersionUID 不一致则会抛出 InvalidClassException 异常
+- static修饰的serialVersionUID是一个特例，用来表示版本，反序列化时，会检查 serialVersionUID 是否和当前类的 serialVersionUID 一致。如果 serialVersionUID 不一致则会抛出 InvalidClassException 异常
 - 常用序列化协议：Kryo；Protobuf
 
 #### 23. 常见语法糖
@@ -468,7 +474,7 @@ JVM不支持语法糖，语法糖都是编译器解糖之后成为`.class`文件
 
 [java注解的本质以及注解的底层实现原理-CSDN博客](https://blog.csdn.net/qq_20009015/article/details/106038023)
 
-- 注解`@interface`实际上是实现了Annotation接口的接口，在调用`getDeclaredAnnotations()`方法时，返回一个**代理类对象**，是通过**JDK动态代理**创建的（原理与spring里的动态代理一致）。在创建这个代理对象之前，解析注解的时候，从注解类的常量池中取出注解的信息，传入到**代理类对象**的构造函数中。
+- 注解`@interface`实际上是实现了Annotation接口的接口，在调用`getDeclaredAnnotations()`方法时，返回一个**代理类对象**`$Proxy`，是通过**JDK动态代理**创建的（原理与spring里的动态代理一致）。在创建这个代理对象之前，解析注解的时候，从注解类的常量池中取出注解的信息，传入到**代理类对象**的构造函数中。
 
 ## Java IO
 
@@ -477,8 +483,8 @@ JVM不支持语法糖，语法糖都是编译器解糖之后成为`.class`文件
 - 根据操作系统知识，一个进程的地址空间划分为用户空间和内核空间，用户空间无法进行系统资源相关的操作，比如文件管理、内存管理、网络管理等，因此要执行IO操作需要依靠内核空间。
 - 应用程序对操作系统发起IO调用（系统调用）时，操作系统负责具体的IO操作，应用程序实际上只是发起了调用。
 - 应用程序发起IO调用后，经历了两个过程：
-  - 内核等待IO设备准备好数据。
-  - 内核将数据从内核空间拷贝到用户空间。
+  - **内核等待IO设备准备好数据。**
+  - **内核将数据从内核空间拷贝到用户空间。**
 - 常见IO模型：同步阻塞IO，同步非阻塞IO，IO多路复用，信号驱动IO和异步IO。
 
 #### 2. Linux/Unix五种IO模型
@@ -491,7 +497,7 @@ JVM不支持语法糖，语法糖都是编译器解糖之后成为`.class`文件
 
 ![img](Java八股整理.assets/16a8726d68af8356tplv-t2oaga2asx-jj-mark3024000q75.png)
 
-3. **IO复用模型**：在Liunx中为我们提供了select/poll，也就是管道，我们就可以将调用它们的线程阻塞在这两个系统调用中的一个上，而不是阻塞在真正的I/O调用上。多路I/O复用本质上并不是非阻塞的，对比阻塞I/O模型它并没有什么优势，事实上使用select需要**两个系统调用**（select/poll和recvfrom）而不是阻塞IO那样的单个调用（recvfrom），I/O复用其实稍有劣势，它的好处就在于**单个进程就可以同时监听多个网络连接的IO**。
+3. **IO复用模型**：在Liunx中为我们提供了select/poll，也就是管道，我们就可以将调用它们的线程阻塞在这两个系统调用中的一个上，而不是阻塞在真正的I/O调用上。多路I/O复用本质上并不是非阻塞的，对比阻塞I/O模型它并没有什么优势，事实上使用select需要**两个系统调用**（select/poll和recvfrom）而不是阻塞IO那样的单个调用（recvfrom），I/O复用其实稍有劣势，它的好处就在于**单个进程就可以同时监听多个网络连接的IO（右侧）**。
 
 ![img](Java八股整理.assets/16a87b415ed485detplv-t2oaga2asx-jj-mark3024000q75.png)
 
@@ -534,8 +540,8 @@ BIO：一个线程负责一个IO连接，NIO：一个线程负责多个IO连接�
 - 过程：
 - 将fd的状态（可读，可写，异常事件）存在一个fd_set数组中。
   - 应用进程调用select时将fd_set传给内核（有一次fd_set从用户空间到内核空间的复制），内核收到后遍历fd_set，检查每个fd是否满足可读写事件。
-  - 若发现有fd有读写事件，会更新fd_set中fd的状态，把fd_set从内核空间复制回用户空间。
-  - 应用进程收到了select返回的活跃事件·类型的fd_set，再向对应的fd读写。
+  - 若发现有fd有读写事件，会更新fd_set中fd的状态，把fd_set从内核空间复制回用户空间。（内核只返回就绪的fd数量）
+  - 应用进程收到了select返回的活跃事件类型的fd_set，再向对应的fd读写。（select方法返回后需要轮询fd_set）
 - **缺点**：
   - fd_set需要复制，fd_set大了很消耗性能。
   - 要遍历轮询fd_set检查可读写状态，较耗时。
@@ -629,7 +635,12 @@ public boolean add(E e) {
 
 - JUC包中供给多线程用的ArrayList，取代了Vector。
 - 与ReentrantReadWriteLock读写锁设计思想类似，读读不互斥，读写互斥，写写互斥。CopyOnWriteArrayList读操作不加锁，更进一步，写操作也不会阻塞读。
-- 核心在于**写时复制CopyOnWrite**的策略。
+- 核心在于**写时复制CopyOnWrite**的策略。如果有多个调用者（callers）同时请求相同资源（如内存或磁盘上的数据存储），他们会共同获取相同的指针指向相同的资源，直到某个调用者试图修改资源的内容时，系统才会真正复制一份专用副本（private copy）给该调用者，而其他调用者所见到的最初的资源仍然保持不变。这过程对其他的调用者都是透明的。此作法主要的优点是如果调用者没有修改该资源，就不会有副本（private copy）被创建，因此多个调用者只是读取操作时可以共享同一份资源。
+- 当需要修改（ `add`，`set`、`remove` 等操作） `CopyOnWriteArrayList` 的内容时，不会直接修改原数组，而是会先创建底层数组的副本，对副本数组进行修改，修改完之后再将修改后的数组赋值回去，这样就可以保证写操作不会影响读操作了。
+- 写时复制的缺点：
+- 1. 多次复制导致的内存占用
+  2. 写操作开销
+  3. 数据一致性问题
 
 ##### 1.7 LinkedList线程安全问题
 
@@ -717,7 +728,7 @@ int index = hash(key) & (n-1);  // 计算index方法
   2. 然后在通过哈希值和索引算法计算index，看数组是否存在该数据，不存在就新增node节点存储，然后方法结束。
   3. 如果目标index上存在数据，则需要用equals方法判断key的内容，要是判断命中，就是替换value，方法结束。
   4. 要是key内容不一样，索引一样，那么就是**哈希冲突**，HashMap解决哈希冲突的策略就是遍历链表，找到最后一个空节点，存储值。如果是JDK1.8，那么如果是红黑树，就是执行红黑树的添加逻辑。
-  5. JDK1.8：如果判断**数组长度是否大于等于64**，**链表长度是否大于等于8**，如果不是就执行6扩容逻辑。如果是，则需要把链表转换成红黑树。
+  5. JDK1.8：如果判断**数组长度是否大于等于64**，**链表长度是否大于等于8**，如果不是就执行6扩容逻辑。如果是，则需要把链表转换成红黑树。小于64就会resize 大于8就会treeifybin
   6. 最后一步就是判断是否到**扩容阀值**，容量达到阀值后，进行一次扩容，按照2倍的规则进行扩容，因为要遵循哈希表的长度必须是2次幂的概念。
 
 - **`get()`原理**：核心逻辑就是取出来索引上的节点，是链表的话挨个匹配hash和equals，直到找出节点。
@@ -805,8 +816,46 @@ SQL：非过程化语言，只需要知道要做什么，不必担心如何去�
 #### 1. MySQL字段类型
 
 - **数值类型**：整型（TINYINT、SMALLINT、MEDIUMINT、INT 和 BIGINT）、浮点型（FLOAT 和 DOUBLE）、定点型（DECIMAL）
+
 - **字符串类型**：CHAR、VARCHAR、TINYTEXT、TEXT、MEDIUMTEXT、LONGTEXT、TINYBLOB、BLOB、MEDIUMBLOB 和 LONGBLOB 等，最常用的是 CHAR 和 VARCHAR。
+
 - **日期时间类型**：YEAR、TIME、DATE、DATETIME 和 TIMESTAMP 等。
+
+  ```sql
+  group by一般和聚合函数一起使用，聚合函数即：AVG SUM MIN MAX COUNT
+  在SELECT列表中所有未包含在组函数中的列都应该包含在 GROUP BY子句中
+  
+  SELECT department_id, AVG(salary)
+  FROM employees
+  GROUP BY department_id ;
+  
+  SELECT department_id dept_id, job_id, SUM(salary)
+  FROM employees
+  GROUP BY department_id, job_id ;
+  
+  HAVING子句
+  1. 行已经被分组。
+  2. 使用了聚合函数。
+  3. 满足 HAVING 子句中条件的分组将被显示。
+  4. HAVING 不能单独使用，必须要跟 GROUP BY 一起使用。
+  
+  不得在WHERE子句中使用聚合函数
+  
+  DATABASE 和 TABLE
+  CREATE DROP
+  TABLE 独有
+  ALTER TABLE table_name: MODIFY(修改列，CHANGE也可以)/RENAME...TO.../ADD(新列)/DROP(删除列)
+  
+  上面是对表结构操作，下面是对表记录操作
+  INSERT INTO/TRUNCATE/DELETE FROM table_name
+  UPDATE employee SET addr='广东韶关' WHERE `name`='李四';
+  ```
+
+#### 2.WHERE和HAVING的区别
+
+**区别1：**WHERE 可以直接使用表中的字段作为筛选条件，但不能使用分组中的计算函数作为筛选条件；HAVING 必须要与 GROUP BY 配合使用，可以把分组计算的函数和分组字段作为筛选条件。
+**区别2：**如果需要通过连接从关联表中获取需要的数据，WHERE 是先筛选后连接，而 HAVING 是先连接后筛选。
+		WHERE 和 HAVING 也不是互相排斥的，我们可以在一个查询里面同时使用 WHERE 和 HAVING。包含分组统计函数的条件用 HAVING，普通条件用 WHERE。这样，我们就既利用了 WHERE 条件的高效快速，又发挥了 HAVING 可以使用包含分组统计函数的查询条件的优点。当数据量特别大的时候，运行效率会有很大的差别
 
 #### 2. **请说下你对MySQL架构的了解？**   ✅
 
@@ -1010,6 +1059,31 @@ B*树：在B+树基础上，为非叶子结点也增加链表指针，将结点�
     4. 插入、删除操作会破坏平衡树的平衡性，因此在插入删除操作之后，需要对树进行一个分裂、合并、旋转等操作来维护平衡性。
     5. ==B+树的叶子节点都是通过指针相互连接的，这使得范围查询变得非常高效，只需要定位到起始叶子节点然后顺序遍历即可。==（这个被美团问了没答出来）
     6. 在 B 树中进行范围查询时，首先找到要查找的下限，然后对 B 树进行中序遍历，直到找到查找的上限；而 B+树的范围查询，只需要对链表进行遍历即可。
+
+#### **为什么Mysql的==存储引擎==（不是Mysql层面的）使用 B+ 树而不是红黑树或者跳表？**
+
+二叉搜索树：不平衡，可能是一条链导致效率很差
+
+红黑树：是平衡的，是二叉的，对in-memory操作做了优化，但是对于硬盘的操作不是那么有效。红黑树相较B+树使用了更多空间。B+树对于范围搜索（是数据库常用的操作）效率很高，而红黑树需要做遍历。当红黑树作用于硬盘上的大数据集的存储和检索时，红黑树的结构、深度不固定，会导致更多的遍历、磁盘I/O操作。比如当我们检索一百万条记录的数据库中指定范围的数据，红黑树需要进行全树遍历。
+
+而多叉树相较于二叉树可以减少磁盘I/O，**扇出高**（Fan-out）。
+
+**扇出**在B+树中指的是每个节点（除叶子节点）的子节点的最大数量。换句话说，扇出就是一个非叶子节点可以拥有的最大子节点数。
+
+跳表：
+
+优点：
+
+1. 是实现简单，并发版本的实现约400行，而并发版本的B+树的Mysql实现需要约5000行代码。
+2. 针对写操作快，B+树需要拆分合并索引数据页，跳表则独立插入，并根据随机函数确定层数，没有旋转和维持平衡的开销，因此跳表的写入性能会比B+树要好。
+
+缺点：
+
+1. 读操作慢，跳表是链表结构，一条数据一个结点，如果最底层要存放2kw数据，且每次查询都要能达到二分查找的效果，2kw大概在2的24次方左右，所以，跳表大概高度在24层左右。最坏情况下，这24层数据会分散在不同的数据页里，也即是查一次数据会经历24次磁盘IO。而B+树只需要3次磁盘IO。
+2. 存储空间大，跳表需要额外的指针来维护层次关系，会占用更多的存储空间，由于B+树的数据结构更为紧凑，它在相同空间下可以存储更多的索引数据。
+3. 跳表的查询不稳定，B+树稳定。
+
+**综上B+树适用于读多写少的场景。**
 
 #### 47. **说一下MySQL的行锁和表锁？**   ✅
 
@@ -2765,6 +2839,32 @@ JWT组成：
 cache 是为了弥补高速设备和低速设备的鸿沟而引入的中间层，最终起到**加快访问速度**的作用。比如寄存器和内存之间速度不匹配所以要加一个缓存。
 而 buffer 的主要目的进行流量整形，把突发的大数量较小规模的 I/O 整理成平稳的小数量较大规模的 I/O，以**减少响应次数**（比如从网上下电影，你不能下一点点数据就写一下硬盘，而是积攒一定量的数据以后一整块一起写，不然硬盘都要被你玩坏了）
 
+#### 0.4 内存、硬盘、网络的速度
+
+```
+CPU -> 内存 -> SSD -> 磁盘 -> 网络
+纳秒 -> 微秒 -> 毫秒 -> 毫秒 -> 秒
+```
+
+1ns纳秒 = 10-9 s
+
+从内存中顺序读取1MB    250,000 ns   = 0.25 ms毫秒			内存寻址 100 ns
+
+从SSD中顺序读取1MB 1,000,000 ns =    1 ms毫秒				 
+
+从磁盘中顺序读取1MB 30,000,000 ns =20~30 ms毫秒		  磁盘寻址   10 ms  是内存的100倍
+
+![image-20240715151547096](Java八股整理.assets/image-20240715151547096.png)
+
+#### 0.5 CPU的Branch Prediction
+
+```java
+//循环1000000次，排序好的data数组（值均匀分布在0~256）比没排序的快6倍
+//原因在于if语句，前半部分，前99%的if都为False，那就不再判断；后半部分，前99%的if都为True，那就不再判断
+if (data[c] >= 128)
+    sum += data[c];
+```
+
 ## JVM
 
 ### ==内存区域==
@@ -3842,7 +3942,7 @@ Linux排查步骤：
 
 #### 4.创建线程的几种方法✅
 
-* 继承Thread类实现
+* 继承Thread类（实现了Runnable接口，run方法内是调用了传入的runnable对象的run方法），重写run方法实现
 
 ```java
 //通过继承Thread类创建线程
@@ -3855,7 +3955,7 @@ Thread t1 = new Thread("t1" ){
 t1.start();
 ```
 
-* 使用 Runnable 配合 Thread
+* 使用 Runnable（是一个接口，有一个抽象方法run()） 配合 Thread
 
 ```java
 //通过实现Runable接口创建线程
@@ -3872,10 +3972,10 @@ Thread t3 = new Thread(() -> {
 t2.start();
 ```
 
-* 实现Callable接口
+* 实现Callable接口（函数式接口，有一个call方法）
 * FutureTask 配合 Thread实现
 
-​	FutureTask 能够接收 Callable 类型的参数，用来处理**有返回结果**的情况
+​	FutureTask 能够接收 Callable 类型的参数（由于是函数式接口，可以用lambda表达式），用来处理**有返回结果**的情况
 
 ```java
 //FutureTask实现
@@ -4170,7 +4270,7 @@ public class Main {
 + 文件下载（IO密集）
 + Tomcat：Tomcat内部采用多线程，上百个客户端同时访问一个Web应用时，Tomcat接入后就是把后续的处理交给一个新的线程处理
 + 异步可以用多线程
-+ 同时调下游接口。
++ 同时调下游接口。（同时调用5个下游接口，获取返回的数据再合并）
 
 #### 3. 并发的三大特性和线程安全性
 
@@ -4186,6 +4286,10 @@ public class Main {
 
 #### 5. **Java 线程同步的几种方法？**   ✅
 
+从调用方的角度，同步的意思是需要等待结果返回才能继续运行。（下图为main线程在等待t1线程和t2线程）不需要等待就是异步。
+
+![image-20240715162318194](Java八股整理.assets/image-20240715162318194.png)
+
 1. 使用Synchronized关键字（偏向锁、轻量级锁、重量级锁）
 2. wait和notify
 3. 使用特殊域变量volatile实现线程同步
@@ -4194,11 +4298,104 @@ public class Main {
 6. 使用信号量Semaphore
 7. 使用Join方法
 
+#### 6. Java线程的关闭方法说说？
 
+**进程关闭：**
+
+1. 命令行kill pid
+2. System.exit(int)方法：目的仅是停止一个线程，但这种做法会让整个程序都停止
+
+**线程挂起：**
+
+join方法：等待线程运行结束，在main线程中调用t1.start()之后调用t1.join()表示主线程挂起等待t1线程执行结束。
+
+LockSupport类的静态方法park()：在t1线程内调用LockSupport.park()（只有当打断标记为假时才会生效，所以当打断标记为真时可以调用Thread.interrupted()方法清除打断标记），会被外部线程调用interrupt()唤醒。
+
+**线程终止：**
+
+线程池的静态方法：`ThreadPoolExecutor的remove方法`，前提是任务必须处于workQueue中，即还未被执行。已经运行的任务是无法删除的。
+
+定义退出标志exit：
+
+```java
+public class ThreadSafe extends Thread{
+    public volatile boolean exit = false;//exit同一时刻只能由一个线程来修改
+    	public void run(){
+            while(!exit){
+                //do something
+            }
+        }
+}
+```
+
+interrupt方法：
+
+可以打断阻塞状态（sleep、wait、join）的线程，**阻塞状态的线程被打断**会抛出InterruptedException，打断标记为false。
+
+也可以打断正常运行的线程，**正常运行的线程**需要循环判断 打断标记 是否为true
+
+获得打断标记：t1.isInterrupted()（会返回打断标记）或Thread.interrupted(是Thread类的静态方法，会返回打断标记并把打断标记置为假)
+
+```java
+Thread t1 = new Thread(()->{
+	while(true){
+        boolean interrupted = Thread.currentThread().isInterrupted();
+        if(interrupted){
+            break;
+        }
+    }
+},"t1");
+t1.start();
+Thread.sleep(1000);//等待t1执行1秒
+t1.interrupt();
+```
+
+两阶段终止模式（优雅方式）：
+
+```java
+main线程中{
+    TwoPhaseTermination tpt = new TwoPhaseTermination();
+    tpt.start();
+    Thread.sleep(3500);
+    tpt.stop();
+}
+class TwoPhaseTermination{
+    private Thread monitor;
+    public void start(){
+        monitor = new Thread(()->{
+            while(true){
+                Thread current = Thread.currentThread();
+                if(current.isInterrupted()){//判断打断标记
+                    log.debug("料理后事");
+                    break;//退出前还可以料理后事
+                }
+                try{
+                    Thread.sleep(1000);//在sleep时有可能被打断，属于非正常打断，需要重新设置打断标记
+                    log.debug("执行监控记录");//在执行log.debug时可能被打断，属于正常打断，会把打断标记置为真
+                }catch(InterruptedException e){
+                    e.printStackTrace();
+                    //重新设置打断标记，解决sleep时被打断的问题
+                    current.interrupt();
+                }
+            }
+        });
+        monitor.start();
+    }
+    public void stop(){
+        monitor.interrupt();
+    }
+}
+```
+
+
+
+![image-20240715175649482](Java八股整理.assets/image-20240715175649482.png)
+
+stop方法（Thread类的过时方法，可以用两阶段终止模式来代替）：强制杀死线程，如果此时线程锁住了共享资源，那么当它被杀死后就再也没有机会释放锁，其他线程将永远无法获取锁。（以及suspend()以及resume()都不建议使用，会破环同步代码块，造成线程死锁，建议使用wait和notify）
 
 ### 同步（锁）
 
-#### 1 synchronized
+#### 1 synchronized（001表示无锁   101表示偏向锁  00表示轻量级锁  10表示重量级锁）
 
 可重入，非公平。
 
@@ -4220,7 +4417,13 @@ public class Main {
 
 - 监视器或管程，每个Java对象都可以关联一个Monitor。用synchronized给对象上锁（重量级）后，对象的Mark Word中设置了指向Monitor对象的指针。Monitor底层是操作系统的Mutex Lock，要进行用户态到内核态转换，开销很大。
 
-<img src="https://cdn.nlark.com/yuque/0/2024/png/35332943/1704558135955-323af34f-e5b4-4bb0-be81-4b06b3cb5e5e.png?x-oss-process=image%2Fresize%2Cw_670%2Climit_0" alt="image.png" style="zoom: 67%;" />
+  ```
+  BLOCKED和WAITING都是阻塞状态，不占用CPU时间片。当Owner释放锁时BLOCKED被唤醒，当调用notify时WAITING被唤醒（重新进入EntryList）。
+  
+  当Owner调用wait时进入WaitSet。wait和notify必须要是当前获得锁的线程才可以调用。（notify是挑一个唤醒,notifyall是唤醒所有waitset中的线程）
+  ```
+
+  <img src="https://cdn.nlark.com/yuque/0/2024/png/35332943/1704558135955-323af34f-e5b4-4bb0-be81-4b06b3cb5e5e.png?x-oss-process=image%2Fresize%2Cw_670%2Climit_0" alt="image.png" style="zoom: 67%;" />
 
 - Owner：持有锁的线程
 - EntryList：想要获取锁但是阻塞的线程
@@ -4231,21 +4434,25 @@ public class Main {
 - https://www.cnblogs.com/wuqinglong/p/9945618.html
 - 早期的synchronized是重量级锁，效率低下，利用的是对象的**monitor**实现加锁，而monitor底层使用的是操作系统的mutex lock，需要用户态到内核态的转换，因此效率低。
 - 优化：无锁->偏向锁->轻量级锁->重量级锁，锁只能升级不能降级。
-- synchronized关键字用Java对象作为锁，而Java的对象头含有一个**32位的Mark Word**，它主要记录的锁的几种状态。每个线程的栈帧都会包含一个锁记录（Lock Record）的对象，内部可以存储锁定对象的 Mark Word。
+- synchronized关键字用Java对象作为锁，而Java的对象头含有一个**32位的Mark Word**，它主要记录的锁的几种状态。**==在调用synchronized关键字后会在当前线程当前方法的栈帧创建一个锁记录（Lock Record）的对象，见下图，是JVM层面的，存了对象的指针，以及对象的Markword==**，内部可以存储锁定对象的 Mark Word。
 
 ![image-20220519165517648](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20220519165517648.png)
 
-* **偏向锁**：引入偏向锁和引入轻量级锁的目的很像，它们都是考虑到没有多线程竞争的情况下，减少传统重量级锁加锁解锁操作引起的性能消耗。偏向锁顾名思义，即偏向第一个线程，在接下来的执行过程中，只会检查线程ID是否为**Mark Word记录的线程ID**。它和轻量级锁不同的地方是，**轻量级锁会在无竞争的情况下使用CAS操作去替代对象头中的Mark Word，而偏向锁在无竞争的情况下会把整个同步都消除掉，连CAS操作都没有了**。当有其他线程来竞争的时候，偏向锁会先升级为轻量级锁。
-* **轻量级锁**：轻量级锁是一种乐观锁的设计方式，**它加锁和解锁都用了CAS操作**。它也是为了在没有竞争的情况下，避免申请互斥量的开销。轻量级锁会用CAS操作替换对象头的Mark word, 在解锁的时候，将对象原来的Mark Word返回。
+* **偏向锁**(默认开启，但是会有启动延时；调用hashcode方法会使偏向锁失效)：引入偏向锁和引入轻量级锁的目的很像，它们都是考虑到没有多线程竞争的情况下，减少传统重量级锁加锁解锁操作引起的性能消耗。偏向锁顾名思义，即偏向第一个线程，在接下来的执行过程中，只会检查线程ID是否为**Mark Word记录的线程ID**。它和轻量级锁不同的地方是，**轻量级锁会在无竞争的情况下使用CAS操作去替代对象头中的Mark Word，而偏向锁在无竞争的情况下会把整个同步都消除掉，连CAS操作都没有了**。当有其他线程来竞争的时候，偏向锁会先升级为轻量级锁。
+* **轻量级锁**：轻量级锁是一种乐观锁的设计方式，**它加锁和解锁都用了CAS操作**。它也是为了在没有竞争的情况下，避免申请互斥量的开销。轻量级锁会用CAS操作替换对象头的Mark word, 在解锁的时候，将对象原来的Mark Word返回。（用于错开时间的多线程访问，CAS失败会升级成重量级锁）
 
 ​															![image-20220519170247282](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20220519170247282.png)
 
-* **重量级锁**：如果有另一个线程来竞争锁，该线程的CAS操作（获取轻量级锁）失败，会进入锁膨胀的过程，将轻量级锁升级为重量级锁。即为Object对象申请Monitor锁，将Object的Mark word改为指向monitor对象的指针，然后自己的线程进入EntryList阻塞。
+* **重量级锁**：如果有另一个线程来竞争锁，该线程的CAS操作（获取轻量级锁）失败，会进入锁膨胀的过程，将轻量级锁升级为重量级锁。
+
+  新加入的线程即为Object对象申请Monitor锁，将Object的Mark word改为指向monitor对象的指针，然后自己的线程进入EntryList阻塞。
+
+  原来的线程在释放锁想要将对象头赋回给对象时发现锁末尾变成10，即重量级锁，则将monitor的Owner置空，唤醒EntryList中线程。
 
 ![image-20220519171107163](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20220519171107163.png)
 
 * **自旋锁**：轻量级锁失败后，虚拟机为了避免线程真实地在操作系统层面挂起，还会进行一项称为自旋锁的优化手段。**再尝试几次获取锁的过程。**
-* **锁消除**：指的就是虚拟机即使编译器在运行时，如果检测到那些共享数据不可能存在竞争（**JVM逃逸分析**），那么就执行锁消除。 锁消除可以节省毫无意义的请求锁的时间。
+* **锁消除**：指的就是虚拟机即时编译器在运行时，如果检测到那些共享数据不可能存在竞争（**JVM逃逸分析**），那么就执行锁消除。 锁消除可以节省毫无意义的请求锁的时间。
 * **锁粗化**：将锁加粗，提升性能，**防止对一个对象反复加锁和解锁**。
 
 ##### 1.5 谈谈 synchronized 和 ReentrantLock 的区别？
@@ -4266,9 +4473,17 @@ public class Main {
 - volatile作用：1. 防止指令重排 2. 保证读取主存中的最新变量
 
 - **volatile的底层原理是内存屏障**。
-* 对volatile变量的写指令之后会加入写屏障，写屏障（sfence）保证在**该屏障之前**，对共享变量的改动，都同步到主存当中。
-  
-* 对volatile变量的读指令之前会加入读屏障，读屏障（lfence）保证在**该屏障之后**，对共享变量的读取，加载的是主存中最新数据。
+  - 对volatile变量的写指令之后会加入写屏障，写屏障（sfence）保证在**该屏障之前**，对共享变量的改动，都同步到主存当中。
+
+  ```java
+  public void writeBarrier(I_result r){
+      num=2;
+      ready=true;//ready是volatile修饰的
+      //写屏障   所有变量的更改都会同步到主存中，不仅仅是ready，num也会
+  }
+  ```
+
+  - 对volatile变量的读指令之前会加入读屏障，读屏障（lfence）保证在**该屏障之后**，对共享变量的读取，加载的是主存中最新数据。
 
 
 - **如何防止指令重排，保证有序性**：
@@ -5462,6 +5677,10 @@ ZSet有两种数据结构，**压缩链表ziplist**和跳表skiplist。保存的
 >
 > 3.删除：在各个层中找到包含指定值的节点并删除，如果删除以后只剩下头尾两个节点，则删除这一层
 
+#### 8. Redis为什么使用跳表而不是B+树作为存储数据结构？
+
+由于Redis是纯的内存数据库。进行**读写数据都是操作内存，跟磁盘没啥关系，因此也不存在磁盘IO了**，所以**层高就不再是跳表的劣势**了，而CPU又不是redis的瓶颈。并且前面也提到B+树是有一系列合并拆分操作的，换成红黑树或者其他AVL树的话也是各种旋转，目的也是为了保持树的平衡。而**跳表插入数据时少了旋转平衡的开销**，只需要随机一下，就知道自己要不要往上加索引，根本不用考虑前后结点的感受。因此，redis选了跳表，而不是B+树。同时并发的跳表实现比并发的B+树实现代码量小（400行和5000行的区别）易于维护。
+
 #### 8.  Redis单线程怎么监听大量客户端连接
 
 ​	通过IO多路复用程序来监听大量客户端连接（或者说多个socket），不用额外创建多余线程监听，降低资源消耗（和NIO中的selector有点像）。
@@ -5618,7 +5837,7 @@ Random：随机
 
 #### 14. **Redis 持久化有几种方式？**   ✅
 
-![捕获19](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/%E6%8D%95%E8%8E%B719-1612333283765.png)
+![捕获19](Java八股整理.assets/捕获19-1612333283765.png)
 
 **持久化**：使用缓存时，要经常把内存数据保存到硬盘中，保证之后可以重用数据（比如重启机器、机器故障之后恢复数据）或数据同步（比如 Redis 集群的主从节点通过 RDB 文件同步数据）。
 
@@ -5661,7 +5880,7 @@ save 900 1           #在900秒(15分钟)之后，如果至少有1个key发生�
 
 save 300 10          #在300秒(5分钟)之后，如果至少有10个key发生变化，Redis就会自动触发BGSAVE命令创建快照。
 
-save 60 10000        #在60秒(1分钟)之后，如果至少有10000个key发生变化，Redis就会自动触发BGSAVE命令创建快照。Copy to clipboardErrorCopied
+save 60 10000        #在60秒(1分钟)之后，如果至少有10000个key发生变化，Redis就会自动触发BGSAVE命令创建快照。
 ```
 
 **AOF（append-only file）持久化**
@@ -5669,7 +5888,7 @@ save 60 10000        #在60秒(1分钟)之后，如果至少有10000个key发生
 与快照持久化相比，AOF持久化 的实时性更好，因此已成为主流的持久化方案。默认情况下Redis没有开启AOF（append only file）方式的持久化，可以通过appendonly参数开启：
 
 ```conf
-appendonly yesCopy to clipboardErrorCopied
+appendonly yes
 ```
 
 开启AOF持久化后每执行一条会更改Redis中的数据的命令，Redis就会将该命令写入硬盘中的AOF文件。AOF文件的保存位置和RDB文件的位置相同，都是通过dir参数设置的，默认的文件名是appendonly.aof。
@@ -5679,16 +5898,16 @@ appendonly yesCopy to clipboardErrorCopied
 ```conf
 appendfsync always    #每次有数据修改发生时都会写入AOF文件,这样会严重降低Redis的速度
 appendfsync everysec  #每秒钟同步一次，显示地将多个写命令同步到硬盘
-appendfsync no        #让操作系统决定何时进行同步Copy to clipboardErrorCopied
+appendfsync no        #让操作系统决定何时进行同步
 ```
 
 为了兼顾数据和写入性能，用户可以考虑 appendfsync everysec选项 ，让Redis每秒同步一次AOF文件，Redis性能几乎没受到任何影响。而且这样即使出现系统崩溃，用户最多只会丢失一秒之内产生的数据。当硬盘忙于执行写入操作的时候，Redis还会优雅的放慢自己的速度以便适应硬盘的最大写入速度。
 
 **Redis 4.0 对于持久化机制的优化**
 
-Redis 4.0 开始支持 RDB 和 AOF 的混合持久化（默认关闭，可以通过配置项 `aof-use-rdb-preamble` 开启）。
+Redis 4.0 开始支持 RDB 和 AOF 的混合持久化（默认关闭，可以通过配置项 `aof-use-rdb-preamble` 开启，指使用rdb前缀）。
 
-如果把混合持久化打开，AOF 重写的时候就直接把 RDB 的内容写到 AOF 文件开头。这样做的好处是可以结合 RDB 和 AOF 的优点, 快速加载同时避免丢失过多的数据。当然缺点也是有的， AOF 里面的 RDB 部分是压缩格式不再是 AOF 格式，可读性较差。
+如果把混合持久化打开，==AOF 重写的时候==就直接把 RDB 的内容写到 AOF 文件开头。这样做的好处是可以结合 RDB 和 AOF 的优点, 快速加载同时避免丢失过多的数据。当然缺点也是有的， AOF 里面的 RDB 部分是压缩格式不再是 AOF 格式，可读性较差。
 
 **补充内容：AOF 重写**
 
@@ -5698,7 +5917,7 @@ AOF重写是一个有歧义的名字，该功能是通过读取数据库中的�
 
 在执行 BGREWRITEAOF 命令时，Redis 服务器**会维护一个 AOF 重写缓冲区**，该缓冲区会在子进程创建新AOF文件期间，记录服务器执行的所有写命令。当子进程完成创建新AOF文件的工作之后，服务器会将重写缓冲区中的所有内容追加到新AOF文件的末尾，使得新旧两个AOF文件所保存的数据库状态一致。最后，服务器用新的AOF文件替换旧的AOF文件，以此来完成AOF文件重写操作
 
-![捕获28](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/%E6%8D%95%E8%8E%B728-1612168091467-1612333283765.png)
+![捕获28](Java八股整理.assets/捕获28-1612168091467-1612333283765.png)
 
 - **更多内容可以查看我的这篇文章：**
   - [Redis持久化](https://snailclimb.gitee.io/javaguide/#/Redis持久化)
@@ -5720,7 +5939,7 @@ Redis集群有三种模式：**主从模式，哨兵模式，cluster(集群)模�
 * 哨兵模式：加入哨兵节点，对异常的主节点进行下线，然后投票选举新的主节点。
 * cluster模式保证高并发，整个集群分担所有的数据，不同的key会放到不同的redis中，每个redis对应一部分槽。
 
-![](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/%E6%8D%95%E8%8E%B740-1612333283766.png)
+![](Java八股整理.assets/捕获40-1612333283766.png)
 
 可以搭建主从复制来保证Redis的高可用。
 
@@ -5752,7 +5971,7 @@ Redis集群有三种模式：**主从模式，哨兵模式，cluster(集群)模�
 
 哨兵(sentinel) 是一个**分布式系统**，用于对主从结构中的每台服务器进行**监控**，当出现故障时通过投票机制**选择**新的master并将所有slave连接到新的master。哨兵也是Redis服务器，但是**不存储数据**。
 
-![捕获48](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/%E6%8D%95%E8%8E%B748-1612333283766.png)
+![捕获48](Java八股整理.assets/捕获48-1612333283766.png)
 
 ##### 监控
 
@@ -5773,6 +5992,7 @@ sentinel和其他sentinel协商主节点状态，**如果主节点挂了**，则
  优点：
 
 - 哨兵模式是基于主从模式的，所有主从的优点，哨兵模式都具有。
+- 应用端不需要更改访问地址。
 - 主从可以自动切换，系统更健壮，可用性更高。
 - Sentinel 会不断的检查 主服务器 和 从服务器 是否正常运行。当被监控的某个 Redis 服务器出现问题，Sentinel 通过API脚本向管理员或者其他的应用程序发送通知。
 
@@ -5798,10 +6018,14 @@ sentinel和其他sentinel协商主节点状态，**如果主节点挂了**，则
 
 **Redis Cluster 扩容缩容期间可以提供服务吗？**Redis Cluster 在扩容或缩容期间依然可以提供服务。在哈希槽被重新分配的过程中，Redis Cluster 可以继续处理客户端请求。这使得 Redis Cluster 能够实现无停机时间的容量调整。
 
+`redis-cli --cluster add-node 127.0.0.1:7006 127.0.0.1:7000`     其中7006为新加入节点，7000为集群中任一节点
+
 > Redis Cluster在扩容和缩容期间仍可以提供服务，原因主要有两方面：
 >
 > 1. **数据分片**：Redis Cluster通过将数据划分为16384个哈希槽的方式进行数据分片。每个节点负责维护一部分哈希槽及其对应的数据。当进行扩容或缩容时，只需将一部分哈希槽从一个节点迁移到另一个节点。在这个过程中，其他未被迁移的哈希槽和对应的数据仍可对外提供服务。
-> 2. **异步迁移**：在Redis Cluster扩容和缩容过程中，哈希槽的迁移是异步进行的，不会阻塞当前的数据读写操作。Redis Cluster支持在数据迁移过程中同时处理客户端的请求，因此扩容和缩容过程对服务的影响非常小。
+> 2. **异步迁移**：在Redis Cluster扩容和缩容过程中，哈希槽的迁移是异步进行的，不会阻塞当前的数据读写操作。Redis Cluster支持在数据迁移过程中同时处理客户端的请求，因此扩容和缩容过程对服务的影响非常小。在数据迁移的过程中，源节点会将属于迁移槽位的数据发送到目标节点，同时继续处理来自客户端的请求。如果在迁移期间有新的数据写入到迁移槽位，它们会被记录下来，并在迁移完成后一起发送到目标节点。
+
+![img](Java八股整理.assets/aHR0cHM6Ly91cGxvYWQtaW1hZ2VzLmppYW5zaHUuaW8vdXBsb2FkX2ltYWdlcy83Nzg5NDE0LWE4NzZkNGQxNDAzZDRiOWEucG5nP2ltYWdlTW9ncjIvYXV0by1vcmllbnQvc3RyaXB8aW1hZ2VWaWV3Mi8yL3cvNzk0L2Zvcm1hdC93ZWJw)
 
 **Redis Cluster 中的节点是怎么进行通信的**：Redis Cluster 中的节点使用了一种叫做 Gossip 的协议来通信。在这种协议中，每个节点会周期性地与其他节点交换信息，包括它们所负责的哈希槽范围、数据的版本等。这种通信方式使得每个节点都能了解到整个集群的状态，同时也支持集群中节点的动态添加和移除。
 
@@ -5818,7 +6042,7 @@ sentinel和其他sentinel协商主节点状态，**如果主节点挂了**，则
 
 **一致性哈希原理**：
 
-- 按照常用哈希算法将对应的key哈希到一个2^32次个桶的空间中，即0-(2^23)-1的数字空间中，将这些数字头尾相连形成闭合环形。
+- 按照常用哈希算法将对应的key哈希到一个2^32次个桶的空间中，即0-(2^32)-1的数字空间中，将这些数字头尾相连形成闭合环形。
 
 ![img](https://pic4.zhimg.com/80/v2-d74906e4f364e75905d7534b646e77a3_720w.webp)
 
@@ -6061,7 +6285,7 @@ if redis.get("key") == unique_value then
 
 - 如果使用Redis主从+哨兵模式，原先的Redis分布式锁会存在问题。比如客户端1在master上SET成功，然后master宕机了，从节点又没有同步客户端1的锁的key，然后从节点变成主节点之后，客户端2又来获取锁成功。此时客户端1和客户端2会同时操作共享变量。
 - 这里采用一个RedLock算法能够解决问题。RedLock算法首先要求Redis高可用采用的是**集群模式**。
-- 在所有的节点上都去SET锁，如果有一般以上的Redis实例中获取锁成功，那么加锁成功。
+- 在所有的节点上都去SET锁，如果有一半以上的Redis实例中获取锁成功，那么加锁成功。
 
 ## 其他框架和分布式理论
 
@@ -6152,7 +6376,7 @@ Kafka：吞吐量高，拉取模型，高可用
 
 换个问题：让你设计一个消息队列，你准备怎么设计
 
-![image-20230207213257674](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230207213257674.png)
+![image-20230207213257674](Java八股整理.assets/image-20230207213257674.png)
 
 **RocketMQ主要由四个部分组成：**
 
@@ -6164,7 +6388,7 @@ Kafka：吞吐量高，拉取模型，高可用
 
 `Broker`:主要负责消息的存储、投递和查询以及服务高可用保证。Broker是消息存放的实际位置。一个Broker上可以存放多个Topic，而每个Topic也可以配置在多个Broker上。一个Topic内还配置了多个队列。
 
-![消息队列架构图](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230203162856554.png)
+![消息队列架构图](Java八股整理.assets/image-20230203162856554.png)
 
 #### **RokcetMQ底层存储机制**
 
@@ -6176,7 +6400,7 @@ RokcetMQ一般是最终是存储在磁盘上的。
 
 **IndexFile**： 提供了⼀种可以通过key或时间区间来查询消息的⽅法。
 
-![img](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/16ef388763c25c62.jpg)
+![img](Java八股整理.assets/16ef388763c25c62.jpg)
 
 ### 分布式/微服务
 
@@ -6194,7 +6418,7 @@ RokcetMQ一般是最终是存储在磁盘上的。
 
 因此，**分布式系统理论上不可能选择 CA 架构，只能选择 CP 或者 AP 架构。**强一致性的系统采用CP架构，高可用的系统采用AP架构（会产生数据不一致的问题）。
 
-![img](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/v2-2f26a48f5549c2bc4932fdf88ba4f72f_720w.webp)
+![img](Java八股整理.assets/v2-2f26a48f5549c2bc4932fdf88ba4f72f_720w.webp)
 
 #### 说说对BASE理论的理解
 
@@ -6226,11 +6450,11 @@ JDK 自带的 **本地锁** 来控制一个 JVM 进程内的多个线程对本�
 
 **Redisson**: Redisson 中的分布式锁自带自动续期机制，使用起来非常简单，原理也比较简单，其提供了一个专门用来监控和续期锁的 **Watch Dog（ 看门狗）**，如果操作共享资源的线程还未执行完成的话，Watch Dog 会不断地延长锁的过期时间，进而保证锁不会因为超时而被释放。
 
-![Redisson 看门狗自动续期](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/distributed-lock-redisson-renew-expiration.png)
+![Redisson 看门狗自动续期](Java八股整理.assets/distributed-lock-redisson-renew-expiration.png)
 
 **RedLock:**  由于 Redis 集群数据同步到各个节点时是异步的，如果在 Redis 主节点获取到锁后，在没有同步到其他节点时，Redis 主节点宕机了，此时新选举出来的 Redis 主节点依然可以获取锁，所以多个应用服务就可以同时获取到锁。
 
-![img](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/redis-master-slave-distributed-lock.png)
+![img](Java八股整理.assets/redis-master-slave-distributed-lock.png)
 
 RedLock算法流程：让客户端向 Redis 集群中的多个独立的 Redis 实例依次请求申请加锁，**如果客户端能够和半数以上的实例成功地完成加锁操作，那么我们就认为，客户端成功地获得分布式锁**，否则加锁失败。即使部分 Redis 节点出现问题，只要保证 Redis 集群中有半数以上的 Redis 节点可用，分布式锁服务就是正常的。
 
@@ -6264,7 +6488,7 @@ RedLock的缺点有：
 
 分布式 ID 是分布式系统下的 ID。当表中的数据量过大时，要进行分库分表，分库之后，数据分布在不同的服务器上，数据库的自增主键已经没办法满足生成的主键唯一了，就引入了分布式ID。
 
-![img](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/distributed-id-requirements.png)
+![img](Java八股整理.assets/distributed-id-requirements.png)
 
 **全局唯一** ：ID 的全局唯一性肯定是首先要满足的！
 
@@ -6334,13 +6558,13 @@ Snowflake 是 Twitter 开源的分布式 ID 生成算法。Snowflake 由 64 bit 
 
 **如果节点数量发生了变化，也就是在对系统做扩容或者缩容时，必须迁移改变了映射关系的数据**，否则会出现查询不到数据的问题。而且迁移成本非常高，因为**大部分映射关系发生了改变**了。
 
-![image-20230716215005461](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230716215005461.png)
+![image-20230716215005461](Java八股整理.assets/image-20230716215005461.png)
 
-![image-20230716215013350](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230716215013350.png)
+![image-20230716215013350](Java八股整理.assets/image-20230716215013350.png)
 
 哈希算法是对节点的数量进行取模运算，而**一致哈希算法是对 2^32 进行取模运算，是一个固定的值**。
 
-<img src="https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230716215249551.png" alt="哈希环" style="zoom:33%;" />
+<img src="Java八股整理.assets/image-20230716215249551.png" alt="哈希环" style="zoom:33%;" />
 
 一致性哈希要进行两步哈希：
 
@@ -6352,11 +6576,11 @@ Snowflake 是 Twitter 开源的分布式 ID 生成算法。Snowflake 由 64 bit 
 
 缺点：**一致性哈希算法虽然减少了数据迁移量，但是存在节点分布不均匀的问题**
 
-<img src="https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230716215436391.png" alt="image-20230716215436391" style="zoom: 67%;" />
+<img src="Java八股整理.assets/image-20230716215436391.png" alt="image-20230716215436391" style="zoom: 67%;" />
 
 解决方案：通过虚拟节点映射到实际节点，简历两层映射关系。而虚拟节点在Hash环上是均匀分布的。
 
-![image-20230716215525852](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230716215525852.png)
+![image-20230716215525852](Java八股整理.assets/image-20230716215525852.png)
 
 ### Docker
 
@@ -6418,7 +6642,7 @@ Docker 设计时，就充分利用 **Union FS** 的技术，将其设计为**分
 
 分层存储的特征还使得镜像的复用、定制变的更为容易。甚至可以用之前构建好的镜像作为基础层，然后进一步添加新的层，以定制自己所需的内容，构建新的镜像。
 
-<img src="https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230528160721341.png" alt="image-20230528160721341" style="zoom: 33%;" />
+<img src="Java八股整理.assets/image-20230528160721341.png" alt="image-20230528160721341" style="zoom: 33%;" />
 
 当容器启动时，一个新的可写层被加载到镜像的顶部。这一层通常被称作“容器层”，“容器层”之下的都叫“镜像层”。
 
@@ -6428,7 +6652,7 @@ Docker 设计时，就充分利用 **Union FS** 的技术，将其设计为**分
 
 Dockerfile是用来构建Docker镜像的文本文件，是由一条条构建镜像所需的指令和参数构成的脚本。
 
-<img src="https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230528161136152.png" alt="image-20230528161136152" style="zoom: 80%;" />
+<img src="Java八股整理.assets/image-20230528161136152.png" alt="image-20230528161136152" style="zoom: 80%;" />
 
 构建三步骤
 
@@ -6497,7 +6721,7 @@ SELECT * FROM user WHERE username="Amy"
 
 #### 十大排序
 
-![image-20230723161145633](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230723161145633.png)
+![image-20230723161145633](Java八股整理.assets/image-20230723161145633.png)
 
 稳定：如果A原本在B前面，而A=B，排序之后A仍然在B的前面；
 不稳定：如果A原本在B的前面，而A=B，排序之后A可能会出现在B的后面；
@@ -6522,7 +6746,7 @@ Out-place：占用额外内存。
 
 * 最坏情况：
 
-  ![image-20230216171313858](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20230216171313858.png)
+  ![image-20230216171313858](Java八股整理.assets/image-20230216171313858.png)
 
 #### 堆排序
 
@@ -6845,7 +7069,7 @@ public class Singleton {
 
 值得注意的是，布隆过滤器的误报率和m（位数组的大小）以及k（哈希函数的数量）有关。当m和k选择得当时，布隆过滤器是非常高效的。
 
-![布隆过滤器hash计算](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8-hash%E8%BF%90%E7%AE%97.png)
+![布隆过滤器hash计算](Java八股整理.assets/布隆过滤器-hash运算.png)
 
 #### 两个栈实现线程安全队列
 
@@ -7090,11 +7314,24 @@ public class NoRepeatSubmitAspect {
 - 涉及的表：`shopping_cart`、`orders`、`order_detail`。
 
 - 每个用户有个user_id，当添加购物车时，会在购物车表`shopping_cart`中添加一行记录或者更改商品数量。
+
 - 每个用户的user_id都会对应`shopping_cart`中多个行。
+
 - 提交订单时，查询`shopping_cart`中user_id对应的行，查找出一个`List<ShoppingCart>`，表示用户的购物车里的商品集合。
+
 - `shopping_cart`表中每行记录都有`dish_id`和`setmeal_id`，用来查询购物车一条记录对应着什么菜品或者套餐。
+
 - 下单后一个用户的所有`shopping_cart`行封装成`order`表中的一个订单行记录，这个行记录有个`order_id`，有个`name`（实际上就是`order_id`）。此外，`order`表中保存着订单的下单用户，电话，地址等信息。
+
 - 然后要查询订单内容的话，通过`order`表的`name`（实际上就是`order_id`）去查询`order_detail`表，有可能一个`order_id`对应了多个`order_detail`表中行，也就是多个商品、商品数量。
+
+  分类中有分类id   分菜品1和套餐2
+  菜品中有菜品id和分类id
+  菜品口味中有口味id和菜品id
+  订单表有订单id用户id地址id
+  订单明细表中有订单id，菜品id或者套餐id（有一个为null），菜品口味
+  套餐里面有套餐id，分类id
+  套餐菜品表中有 套餐菜品id 和 套餐id 和 菜品id
 
 #### 防止菜品超售——MySQL行锁
 
@@ -7167,3 +7404,55 @@ wrapperDish.in(Dish::getId,dishAmount.keySet().stream().collect(Collectors.toLis
 #### 项目后端部署
 
 - 使用`mvn clean package`进行打包，打成一个`jar`包后，通过`java -jar xxxx.jar`启动。
+
+
+
+## 学成在线
+
+VO DTO PO
+
+@RestController(@ResponseBody+@Controller)只能返回json不能返回http页面
+
+ajax不允许 **跨域请求**：如果协议、主机、端口有一个不一致就是跨域http://localhost:8601
+
+解决方法：①JSONP	②添加响应头Access-Control-Allow-Origin	③通过nginx代理
+
+![image-20240708183016930](Java八股整理.assets/image-20240708183016930.png)
+
+**mybatis分页插件原理：**分页参数放到ThreadLocal中，拦截器会拦截执行的sql语句，根据数据库类型添加对应的分页语句重写sql，例如：（select * from table where a）转换为
+
+（select count(*) from table where a）和（select * from table where a limit ）
+
+计算出了total总条数、pageNum当前第几页、pageSize每页大小和当前页的数据，是否为首页，是否为尾页，总页数等。
+
+```java
+@Configuration
+@MapperScan("com.xuecheng.content.mapper")//
+public class MybatisPlusConfig {
+    /**
+     * 定义分页拦截器
+     */
+    @Bean
+    public MybatisPlusInterceptor mybatisPlusInterceptor() {
+        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
+        return interceptor;
+    }
+}
+```
+
+**Mybatis ResultType和ResultMap区别：**当java对象属性名和表的字段名对应就可以直接使用ResultType，否则使用ResultMap来进行手工映射
+
+**#{}和${}区别：**#{}标记一个占位符，可以防止sql注入
+
+**全局异常处理：**@ControllerAdvice控制器增强，指定某一个方法对某一些异常类型进行捕获
+
+**参数合法性校验：**使用基于JSR-303的校验框架实现，在Controller上开启校验
+
+配置信息放在Nacos进行统一管理，项目会有多个实例。分为每个项目特有的配置，项目所公用的配置。
+
+Nacos使用namespace、group、dataid来定位一个配置文件
+
+一个配置文件由content-service-dev.yaml组成，服务名-环境名-后缀
+
+![image-20240709155444111](Java八股整理.assets/image-20240709155444111.png)
