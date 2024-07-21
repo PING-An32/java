@@ -3486,13 +3486,13 @@ A.xx=D;//A到D的引用被建立
 - G1把堆分成多个大小相等的独立区域**Region**，新生代和老年代**不再是物理隔离**的了。
 - （每个Region被划分为Eden、Survivor、Old、Humongous(用来存放大对象,超过Region大小的一半)）
 
-![image-20220520113514571](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20220520113514571.png)
+![image-20240704212909872](Java八股整理.assets/image-20220520113514571.png)
 
 - 通过引入Region的概念，每个小空间可以单独进行垃圾回收。这种划分方法带来了很大的灵活性，可以**建立停顿时间预测模型**。还可以记录每个Region进行垃圾回收的时间以及回收所获得的空间，并维护一个**优先级列表**，每次根据允许的收集时间，**优先回收价值最大的Region**。
 
 - G1的垃圾收集范围不再是Minor GC，Major或者Full GC了，它可以面向堆内存任何Region来组成回收集，哪块Region回收的收益越大，这就是G1收集器的**Mixed GC模式**（在一次垃圾回收中可以选择Eden、Survivor或Old，取决于哪个Region里垃圾最多）。
 
-![image-20220520150400499](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20220520150400499.png)
+![image-20220520150400499](Java八股整理.assets/image-20220520150400499.png)
 
 - 每个Region都有一个**Remember Set**，用于解决**跨Region引用的问题**，记录哪些内存区域中存在对当前Region中对象的引用，通过使用Remember Set，在做可达性分析的时候可以**避免全堆扫描**。但是导致G1占用堆容量更大。
 
@@ -3567,7 +3567,7 @@ A.xx=D;//A到D的引用被建立
 
 - **类加载检查：**虚拟机遇到一条new指令时，首先将去检查这个指令的参数能否在方法区常量池中**定位到这个类的符号引用**，并且检查这个符号引用代表的类是否已经被加载、连接和初始化过，如果没有，那必须先执行相应的类加载过程。
 
-- **分配内存：**在类加载检查通过后，接下来虚拟机将为新生对象分配内存。对象所需的内存大小在类加载完成后便可以确定，为对象分配空间的任务等同于把一块确定大小的内存从Java堆中划分出来。分配方式有“指针碰撞”和“空闲列表”两种，选择哪种方式由Java堆是否规整决定
+- **分配内存：**在类加载检查通过后，接下来虚拟机将为新生对象分配内存。对象所需的内存大小在类加载完成后便可以确定，为对象分配空间的任务等同于把一块确定大小的内存从Java堆中划分出来。分配方式有“指针碰撞”和“空闲列表”两种，选择哪种方式由Java堆是否规整决定（GC是否带有压缩整理功能）。
 
 - **初始化零值：**保证了对象的实例字段在Java代码中可以不赋初值就直接使用，程序能访问这些字段的数据类型所对应的零值。
 - **设置对象头：**初始化零值完成之后，虚拟机要对对象进行必要的设置，例如这个对象是哪个类的实例，如何才能找到**类的元数据信息，对象的哈希码、对象的GC分代年龄等信息**，这些信息存放在对象头中（比如==markword==关键字里面有很多）。另外，根据虚拟机当前运行状态的不同，如是否启用偏向锁等，对象头会有不同的设置方式。
@@ -3581,7 +3581,7 @@ A.xx=D;//A到D的引用被建立
 
 类从被加载到虚拟机内存中开始，到卸载出内存为止，它的整个生命周期包括：加载、验证、准备、解析、初始化、使用、卸载7个阶段。其中验证、准备、解析3个部分统称为连接，这7个阶段发生的顺序如下图所示：==注意：加载和连接有可能是交替运行的== 
 
-![img](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/format,png.png) 
+![img](Java八股整理.assets/format,png.png) 
 
 ----
 
@@ -4118,7 +4118,7 @@ public class ThreadPrintByLock {
     }
 
     private void printABC(int targetNum) {
-        for(int i = 0; i < 10; ){
+        for(int i = 0; i < 10; ){//每次for里，如果没有拿到lock，那么就不执行i++，相当于while(true)
             lock.lock();
             if(num % 3 == targetNum){
                 num++;
@@ -4126,6 +4126,22 @@ public class ThreadPrintByLock {
                 System.out.println(Thread.currentThread().getName());
             }
             lock.unlock();
+        }
+    }
+    private void printABC(int targetNum){//这种写法也是可以的
+        while(true){
+            try{
+                lock.lock();
+                if(num>30)break;
+                if(num % 3 == targetNum){
+                    num++;
+                	System.out.println(Thread.currentThread().getName());
+                }
+            }catch(Exception e){
+                e.printStackTrace();
+            }finally{
+                lock.unlock();
+            }
         }
     }
 }
