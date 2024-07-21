@@ -671,16 +671,24 @@ public boolean add(E e) {
 
 ##### 3.1 ArrayBlockingQueue
 
+阻塞方法：put()生产元素，take()消费元素。(BlockingQueue接口中的方法)
+
+非阻塞方法：offer()，poll()。(被BlockingQueue重写，可以返回成功与否)
+
 - 实现原理：
   - 底层用一个数组存储元素。
-  - 用ReentrantLock对读写进行同步。
-  - 用Condition实现线程等待和唤醒。
+  - 插入和获取需要获得ReentrantLock才能操作。
+  - 用Condition实现线程等待和唤醒。（有notEmpty和notFull两个Condition类型的成员变量）
   - 容量有限，创建就不能改。
   - 有非阻塞存取元素方法，一般不用。
+  - 生产者和消费者通过两个Condition变量实现对彼此的唤醒，比如队列原来为空，put元素之后，生产者调用notEmpty.signal()
+
+![ArrayBlockingQueue 非空非满](Java八股整理.assets/ArrayBlockingQueue-notEmpty-notFull.png)
+
 - ArrayBlockingQueue和LinkedBlockingQueue
   - **底层实现**：ABQ是数组，LBQ是链表。
   - **是否有界**：ABQ有界，LBQ默认Integer.MAX_VALUE，所以无界。
-  - **锁是否分离**：ABQ不分离，LBQ分离。
+  - **锁是否分离**：ABQ不分离，LBQ分离（生产用putLock，消费用takeLock）。
   - **内存占用**：ABQ会留出余量。
 - ArrayBlockingQueue和ConcurrentLinkedQueue
   - **底层实现：**ABQ是数组，CLQ是链表。
@@ -831,7 +839,7 @@ SQL：非过程化语言，只需要知道要做什么，不必担心如何去�
   
   SELECT department_id dept_id, job_id, SUM(salary)
   FROM employees
-  GROUP BY department_id, job_id ;
+  GROUP BY department_id, job_id ; -- 那么同一个department_id和同一个的job_id才会被归为一个组
   
   HAVING子句
   1. 行已经被分组。
@@ -1461,7 +1469,7 @@ MyISAM只支持表级锁，一锁就锁整张表。
 #### InnoDB有哪几类行锁
 
 - **记录锁（Record Lock）**：单个行记录上的锁，有S锁和X锁之分。
-- **间隙锁（Gap Lock）**：为了防止幻读，因为事务第一次执行读取时，幻影记录还不存在，所以没法加记录锁，此时需要间隙锁来防止幻读。锁定一个范围。作用是为了防止再当前记录前插入幻影记录。
+- **间隙锁（Gap Lock）**：为了防止幻读，因为事务第一次执行读取时，幻影记录还不存在，所以没法加记录锁，此时需要间隙锁来防止幻读。锁定一个范围。作用是为了防止在当前记录前插入幻影记录。
 
 - **临键锁（Next-Key Lock）**：想锁住某条记录，又想防止在他之前插入幻影记录，实际上是记录锁和间隙锁的结合。**左开右闭合。**
 
@@ -1918,13 +1926,15 @@ Physical Datalink Netword Transaction Session Presentation Application
 
 [2.2 键入网址到网页显示，期间发生了什么？ | 小林coding (xiaolincoding.com)](https://www.xiaolincoding.com/network/1_base/what_happen_url.html)
 
+![img](Java八股整理.assets/7.jpg)
+
 1. **HTTP**：输入URL，对URL解析，得到Web服务器域名和请求的文件名，生成HTTP请求。
 2. **DNS**：域名解析成目标IP地址，`www.server.com`中，其实最后还有一个`.`，`.`为根域DNS服务器，`.com`为顶级域DNS服务器，`server.com`为权威DNS服务器。若缓存中有这个域名的IP地址，则直接得到目标IP，否则从**根域DNS服务器**开始往下顺藤摸瓜查找到目标IP。查询过程看上面网址。
 3. **协议栈**：属于操作系统，通过DNS获取IP后，将传输工作交给协议栈，协议栈内部对传输规则进行了规定。
 4. **TCP**：三次握手建立连接，若应用层给的报文太长，需要进行分割，之后添加TCP头部，成为TCP报文段。TCP只记录发出和目标的端口，没有具体位置。
 5. **IP**：将TCP报文段添加IP头部，成为分组/包。
 6. **MAC**：以太网上不用IP这套，要用MAC地址，网络包需要加上MAC头部，通过ARP缓存或广播方式得到目标的MAC地址，加上MAC头部。
-7. **网卡**：将数字信息转换为电信号，加分隔符和校验序列。网卡有自己的MAC地址。
+7. **网卡**：将数字信息转换为电信号，加分隔符和校验序列。网卡有自己的MAC地址，表示发送端。
 8. **交换机**：交换机将电信号转换为数字信号，交换机没有MAC地址，也不核验MAC地址，根据MAC地址发送到自己对应的端口上。
 
 ![image.png](https://cdn.nlark.com/yuque/0/2024/png/35332943/1705498489425-0810f121-88f1-46f8-839d-042ea242ca06.png)
@@ -3464,7 +3474,7 @@ A.xx=D;//A到D的引用被建立
   
 - 无法处理**浮动垃圾**（在并发标记和并发清理阶段产生的垃圾），可能会发生**Concurrent Mode Failure**。
   
-- 因为浮动垃圾的存在，CMS不能像其他收集器那样等待老年代快满时才进行回收，而是要预留出一部分空间给并发标记阶段。当预留的内存不够存放浮动垃圾时，就会出现Concurrent Mode Failure，这时虚拟机会临时启用**Serial Old**来替代CMS。0000
+- 因为浮动垃圾的存在，CMS不能像其他收集器那样等待老年代快满时才进行回收，而是要预留出一部分空间给并发标记阶段。当预留的内存不够存放浮动垃圾时，就会出现Concurrent Mode Failure，这时虚拟机会临时启用**Serial Old**来替代CMS。
   
 - 标记-清除算法会产生**内存碎片**。会出现老年代空间剩余，但是无法找到足够大的连续内存空间来分配给当前对象，从而触发一次Full GC。
 
