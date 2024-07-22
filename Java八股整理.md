@@ -4018,7 +4018,7 @@ executorService.execute(task);
 
 
 
-#### 多线程打印的几种方法✅
+#### 多线程打印的几种方法✅（建议统一记for的写法）
 
 **多线程轮流打印ABC/打印 0 - 100** 
 
@@ -4072,6 +4072,22 @@ public class ThreadPrintTest {
     /**
      * 轮流打印 1 - 100
      */
+    private void print123(int targetNum){
+        for (int i = 0; i < 10; i++) {
+            synchronized (Lock){
+                try {
+                    while(num%3 != targetNum){
+                        Lock.wait();
+                    }
+                    System.out.println(Thread.currentThread().getName()+":"+num);
+                    num++;
+                    Lock.notifyAll();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    }
     private void printOrder(int targetNum) {
         while(true){
             synchronized (LOCK) {
@@ -4160,9 +4176,9 @@ public class ThreadPrintByLockAndCondition {
 
     private void printABC(int targetNum, Condition currentThread, Condition nextThread) {
         for (int i = 0; i < 10; ) {
-            lock.lock();
             try {
-                while (num % 3 != targetNum) {
+                lock.lock();
+                if (num % 3 != targetNum) {
                     currentThread.await();
                 }
                 num++;
@@ -4172,6 +4188,24 @@ public class ThreadPrintByLockAndCondition {
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             } finally {
+                lock.unlock();
+            }
+        }
+    }
+    private void printABC(int targetNum,Condition c1,Condition c2){//这种写法也可以
+        while(true){
+            try {
+                lock.lock();
+                if(num%3 != targetNum){
+                    c1.await();
+                }
+                if(num>30)break;
+                System.out.println(Thread.currentThread().getName()+":"+num);
+                num++;
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }finally {
+                c2.signal();
                 lock.unlock();
             }
         }
@@ -4199,51 +4233,52 @@ public class ThreadPrintByLockAndCondition {
 ```java
 import java.util.LinkedList;  
   
-class ProducerConsumer {  
-    private LinkedList<Integer> buffer = new LinkedList<>();  
-    private int capacity = 5;  
-  
-    public void produce() throws InterruptedException {  
-        int value = 0;  
-        while (true) {  
-            synchronized (this) {  
-                // 检查缓冲区是否已满  
-                while (buffer.size() == capacity) {  
-                    wait();  
-                }  
-  
-                System.out.println("生产者生产: " + value);  
-                buffer.add(value++);  
-  
-                // 通知消费者可以消费  
-                notify();  
-  
-                // 等待一段时间，模拟生产过程  
-                Thread.sleep(1000);  
-            }  
-        }  
-    }  
-  
-    public void consume() throws InterruptedException {  
-        while (true) {  
-            synchronized (this) {  
-                // 检查缓冲区是否为空  
-                while (buffer.isEmpty()) {  
-                    wait();  
-                }  
-  
-                int value = buffer.removeFirst();  
-                System.out.println("消费者消费: " + value);  
-  
-                // 通知生产者可以继续生产  
-                notify();  
-  
-                // 等待一段时间，模拟消费过程  
-                Thread.sleep(1000);  
-            }  
-        }  
-    }  
-}  
+class ProducerConsumer {
+    private LinkedList<Integer> buffer = new LinkedList<>();
+    private int capacity = 5;
+    private static final Object Lock = new Object();
+
+    public void produce() throws InterruptedException {
+        int value = 0;
+        while (true) {
+            // 等待一段时间，模拟生产过程，存入生产者自己的缓冲区
+            Thread.sleep(500+(int)(Math.random()*1000));
+            synchronized (Lock) {
+                // 检查缓冲区是否已满
+                while (buffer.size() == capacity) {
+                    System.out.println("生产者阻塞...");
+                    Lock.wait();//进入waitSet
+                }
+
+                System.out.println("生产者生产: " + value);
+                buffer.offer(value++);
+
+                // 通知消费者可以消费
+                Lock.notify();
+            }
+        }
+    }
+
+    public void consume() throws InterruptedException {
+        while (true) {
+            // 等待一段时间，模拟消费过程，存入消费者自己的缓冲区
+            Thread.sleep( 1500+(int)(Math.random()*1000));
+            synchronized (Lock) {
+                // 检查缓冲区是否为空
+                while (buffer.isEmpty()) {
+                    System.out.println("消费者阻塞");
+                    Lock.wait();
+                }
+
+                int value = buffer.poll();
+                System.out.println("消费者消费: " + value);
+
+                // 通知生产者可以继续生产
+                Lock.notify();
+            }
+        }
+    }
+}
   
 public class Main {  
     public static void main(String[] args) {  
