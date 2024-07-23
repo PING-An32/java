@@ -4182,7 +4182,7 @@ public class ThreadPrintByLockAndCondition {
                     currentThread.await();
                 }
                 num++;
-                i++;
+                i++;//带Condition的i++也可以放到for()里面
                 System.out.println(Thread.currentThread().getName());
                 nextThread.signal();
             } catch (InterruptedException e) {
@@ -4266,7 +4266,7 @@ class ProducerConsumer {
             synchronized (Lock) {
                 // 检查缓冲区是否为空
                 while (buffer.isEmpty()) {
-                    System.out.println("消费者阻塞");
+                    System.out.println("消费者阻塞...");
                     Lock.wait();
                 }
 
