@@ -4435,7 +4435,7 @@ class TwoPhaseTermination{
                     log.debug("执行监控记录");//在执行log.debug时可能被打断，属于正常打断，会把打断标记置为真
                 }catch(InterruptedException e){
                     e.printStackTrace();
-                    //重新设置打断标记，解决sleep时被打断的问题
+                    //重新设置打断标记（将其置为真），解决sleep时被打断的问题
                     current.interrupt();
                 }
             }
@@ -4463,16 +4463,32 @@ stop方法（Thread类的过时方法，可以用两阶段终止模式来代替�
 ##### 1.1 使用方法
 
 - 修饰实例方法（锁定的是这个对象）
+
 - 修饰静态方法（锁定的是类的Class对象）
+
 - 修饰代码块
+
 - ps：构造方法不能用，因为构造方法本身就线程安全
+
+  1. 在构造函数中，`this` 事实上没有完全构造好，此时不能用作锁。
+
+  2. 构造函数中， `this` 还没有被传递出去，事实上不存在并发问题。（不同线程new出来的对象都是不同的，除非提前把当前的this暴露出去，同时被另外一个线程使用）
+
+     ```java
+     private static Object that;
+     
+     // 请不要这样做
+     public Server() {
+         that = this;
+     }
+     ```
 
 ##### 1.2 底层原理
 
 <img src="https://cdn.nlark.com/yuque/0/2024/png/35332943/1704296409074-9aefe326-0782-4ed5-9d9a-3bdfb205df2d.png?x-oss-process=image%2Fresize%2Cw_937%2Climit_0" alt="img" style="zoom:50%;" />
 
-- 同步代码块时使用的是monitorenter和monitorexit，用来获取对象监视器monitor（管程）。
-- 同步方法时使用的是ACC_SYNCHRONIZED标识，本质也是获取对象监视器。
+- 同步代码块时（synchronized(lock){}）使用的是monitorenter和monitorexit，用来获取对象监视器monitor（管程）。
+- 同步方法时使用的是ACC_SYNCHRONIZED标识，先看方法的ACC_SYNCHRONIZED是否被设置，本质也是获取对象监视器。
 
 ##### 1.3 monitor原理
 
@@ -4495,12 +4511,12 @@ stop方法（Thread类的过时方法，可以用两阶段终止模式来代替�
 - https://www.cnblogs.com/wuqinglong/p/9945618.html
 - 早期的synchronized是重量级锁，效率低下，利用的是对象的**monitor**实现加锁，而monitor底层使用的是操作系统的mutex lock，需要用户态到内核态的转换，因此效率低。
 - 优化：无锁->偏向锁->轻量级锁->重量级锁，锁只能升级不能降级。
-- synchronized关键字用Java对象作为锁，而Java的对象头含有一个**32位的Mark Word**，它主要记录的锁的几种状态。**==在调用synchronized关键字后会在当前线程当前方法的栈帧创建一个锁记录（Lock Record）的对象，见下图，是JVM层面的，存了对象的指针，以及对象的Markword==**，内部可以存储锁定对象的 Mark Word。
+- synchronized关键字用Java对象作为锁，而Java的对象头含有一个**32位的Mark Word**，它主要记录的锁的几种状态。**==在调用synchronized关键字后会在当前线程当前方法的栈帧创建一个锁记录（Lock Record）的对象，见下图，是JVM层面的，存了对象的指针，以及锁记录的地址==**，内部可以存储锁定对象的 Mark Word。
 
 ![image-20220519165517648](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20220519165517648.png)
 
 * **偏向锁**(默认开启，但是会有启动延时；调用hashcode方法会使偏向锁失效)：引入偏向锁和引入轻量级锁的目的很像，它们都是考虑到没有多线程竞争的情况下，减少传统重量级锁加锁解锁操作引起的性能消耗。偏向锁顾名思义，即偏向第一个线程，在接下来的执行过程中，只会检查线程ID是否为**Mark Word记录的线程ID**。它和轻量级锁不同的地方是，**轻量级锁会在无竞争的情况下使用CAS操作去替代对象头中的Mark Word，而偏向锁在无竞争的情况下会把整个同步都消除掉，连CAS操作都没有了**。当有其他线程来竞争的时候，偏向锁会先升级为轻量级锁。
-* **轻量级锁**：轻量级锁是一种乐观锁的设计方式，**它加锁和解锁都用了CAS操作**。它也是为了在没有竞争的情况下，避免申请互斥量的开销。轻量级锁会用CAS操作替换对象头的Mark word, 在解锁的时候，将对象原来的Mark Word返回。（用于错开时间的多线程访问，CAS失败会升级成重量级锁）
+* **轻量级锁**（可重入，创建多个锁记录栈帧，锁记录地址为null）：轻量级锁是一种乐观锁的设计方式，**它加锁和解锁都用了CAS操作**。它也是为了在没有竞争的情况下，避免申请互斥量的开销。轻量级锁会用CAS操作替换对象头的Mark word, 在解锁的时候，将对象原来的Mark Word返回。（用于错开时间的多线程访问，CAS失败会升级成重量级锁）
 
 ​															![image-20220519170247282](https://cdn.jsdelivr.net/gh/lqz123/ImageBucket/images/image-20220519170247282.png)
 
@@ -4586,7 +4602,7 @@ CAS就是Compare And Set,即为**比较和交换**。CAS机制中使用了3个�
 
 #### 15. 谈谈对ThreadLocal的理解？  ✅
 
-**一个线程私有的全局变量。**
+**一个线程私有的全局变量。**一个ThreadLocal变量只能对应一个值。
 
 ThreadLocal的作用是**将共享数据看做线程的私有变量进行处理**。ThreadLocal主要功能就是给每个线程创建变量副本，这样就可以保证一个线程对某个变量的修改不会影响到其他线程对该变量的使用。
 
@@ -4634,7 +4650,7 @@ null
 
 #### 谈谈ThreadLocal的实现原理？✅
 
-​	每一个Thread对象内部都有一个`ThreadLocalMap`类型的对象，可以理解它是一个为ThreaLocal类定制的HashMap。**而`ThreadLocalMap`可以存储以`ThreadLocal`为 key ，Object 对象为 value 的键值对**（存放在entry数组中）。最终的变量是放在了当前线程的 `ThreadLocalMap` 中，并不是存在 `ThreadLocal` 上，`ThreadLocal` 可以理解为只是`ThreadLocalMap`的封装，传递了变量值。
+​	每一个Thread对象内部都有一个`ThreadLocalMap`类型的对象(是ThreadLocal类的静态内部类)，可以理解它是一个为ThreadLocal类定制的HashMap。**而`ThreadLocalMap`可以存储以`ThreadLocal`为 key ，Object 对象为 value 的键值对**（存放在entry数组中）。最终的变量是放在了当前线程的 `ThreadLocalMap` 中，并不是存在 `ThreadLocal` 上，`ThreadLocal` 可以理解为只是`ThreadLocalMap`的封装，传递了变量值。
 
 <img src="https://cdn.nlark.com/yuque/0/2024/png/35332943/1704383834900-5e1b9cf2-7913-417e-9e3e-cfa4ae78d80e.png?x-oss-process=image%2Fresize%2Cw_591%2Climit_0" alt="img" style="zoom:50%;" />
 
@@ -4648,7 +4664,7 @@ public void set(T value) {
     ThreadLocalMap map = getMap(t);
     if (map != null)
         // 将需要存储的值放入到这个哈希表中
-        map.set(this, value);
+        map.set(this, value);//this是指当前的ThreadLocal对象
     else
         createMap(t, value);
 }
@@ -4657,7 +4673,7 @@ ThreadLocalMap getMap(Thread t) {
 }
 ```
 
-- 一个线程可以创建多个`ThreadLocal`变量，然后调用他们的`set()`方法，实际上使用到该线程的`ThreadLocalMap`类的对象，存入一个entry，key是调用`set()`方法的`ThreadLocal`对象，value是`set()`方法传入的值。
+- ==一个线程可以创建多个`ThreadLocal`变量==，然后调用他们的`set()`方法，实际上使用到该线程的`ThreadLocalMap`类的对象，存入一个entry，key是调用`set()`方法的`ThreadLocal`对象，value是`set()`方法传入的值。
 
 #### 为什么ThreadLocal会有内存泄漏问题？怎么解决？✅
 
@@ -4667,7 +4683,7 @@ ThreadLocalMap 实现中已经考虑了这种情况，在调用 `set()`、`get()
 
 #### 所以ThreadLocal的key为什么要设计成弱引用？
 
-因为ThreadLocal实际存放在ThreadLocalMap中，而**ThreadLocalMap是Thread的成员变量（ThreadLocalMap的生命周期比ThreadLocal还要长），如果设计成强引用，这就会导致ThreadLocal对象不能被垃圾收集器回收，这就出现了内存泄漏**
+因为ThreadLocal实际存放在ThreadLocalMap中，而**ThreadLocalMap是Thread的成员变量（ThreadLocalMap的生命周期比ThreadLocal还要长，可以从上面的getMap()方法看出，ThreadLocalMap是Thread对象的threadLocals变量），如果设计成强引用，这就会导致ThreadLocal对象不能被垃圾收集器回收，这就出现了内存泄漏**
 
 如果key是弱引用，那么在ThreadLocal对象生命周期结束后，key会被垃圾收集器回收。由于ThreadLocalMap中的Entry维护了对key的弱引用，垃圾回收器会将这个弱引用置为null，这样就不会阻止ThreadLocal对象的回收。这种设计有助于减少内存泄漏的问题。
 
