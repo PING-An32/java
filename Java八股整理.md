@@ -4689,7 +4689,7 @@ ThreadLocalMap 实现中已经考虑了这种情况，在调用 `set()`、`get()
 
 然而，值（value）却是强引用，如果没有手动删除对应key，那么value就会一直在ThreadLocalMap中，导致内存泄漏。这就是为什么使用完ThreadLocal之后，最好手动调用remove()方法的原因。
 
-**总结一下，ThreadLocal的key设计为弱引用主要是为了避免内存泄漏，但是这并不能完全解决问题，正确使用ThreadLocal的方法应该是每次使用后都调用remove()方法。**
+**总结一下，ThreadLocal的key设计为弱引用主要是为了及时回收不再使用的ThreadLocal变量，避免内存泄漏，但是这并不能完全解决问题，正确使用ThreadLocal的方法应该是每次使用后都调用remove()方法。**
 
 ### 线程池
 
