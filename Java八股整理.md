@@ -4722,7 +4722,7 @@ public ThreadPoolExecutor(int corePoolSize,
 
 ****
 
-##### 1.2 通过 Executor 框架的工具类 **Executors**来实现：4种
+##### 1.2 通过 Executor 框架的工具类 **Executors**来实现：4种（本质上都是通过ThreadPoolExecutor来new，只不过给定了参数）
 
 1. **FixedThreadPool**：该方法返回一个固定线程数量的线程池。**该线程池中的线程数量始终不变**。当有一个新的任务提交时，线程池中若有空闲线程，则立即执行。若没有，则新的任务会被暂存在一个任务队列中，待有线程空闲时，便处理在任务队列中的任务。
 2. **SingleThreadPool**：方法返回一个**只有一个线程的线程池**。若多于一个任务被提交到该线程池，任务会被保存在一个任务队列中，待线程空闲，按先进先出的顺序执行队列中的任务。
@@ -4902,12 +4902,6 @@ Java7 中 ConcurrentHashMap 使用的分段锁，也就是每一个 Segment 上�
 Java8 中的 ConcurrentHashMap 使用的 Synchronized 锁加 CAS 的机制。结构也由 Java7 中的 **Segment 数组 + HashEntry 数组 + 链表** 进化成了 **Node 数组 + 链表 / 红黑树**，Node 是类似于一个 HashEntry 的结构。它的冲突再达到一定大小时会转化成红黑树，在冲突小于一定数量时又退回链表。
 
 ConcurrentHashMap可以实现读读并发，读写并发，写写互斥。因为只有Put操作的时候才会加锁。
-
-- 
-
-
-
-
 
 ## Spring
 
@@ -5117,7 +5111,7 @@ Spring中的Bean是否线程安全，取决于其作用域和状态。
 
 作用域是prototype的没有线程安全问题，因为每次获取bean都是不同的。作用域是singleton的有线程安全问题，因为IoC容器中只有一个，如果该bean有状态（指的是包含可变的成员变量）那就有线程安全问题。
 
-不过大部分bean是无状态的（比如Service和DAO），这种情况下线程安全。
+不过大部分bean是无状态的（比如Service和DAO），这种情况下线程安全。 
 
 #### 5.Bean的作用域？✅
 
