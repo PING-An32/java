@@ -5039,6 +5039,56 @@ public OneService getService(status) {
 
 - @Inject
 
+- @Import(Spring 4.2.x之后可以用来注入没有被纳入IoC容器管理的类，但是Import一般不这么用)
+
+- ~~@Import~~**（作用一般是管理配置，关注点是如何组织和导入配置，以实现更好的模块化和重用性。主要用于配置类之间的关系和依赖，==而不是直接定义业务逻辑组件。==）**
+
+  ```java
+  @Import用于显式地将类纳入IoC容器管理，区别于ComponentScan(需要遵循一些约定俗成的规范，比如驼峰命名法)的隐式注解扫描。
+  
+  //使用场景如下，如果手动使用@Autowired一个一个注入，那要写无数的类
+  @Target({ElementType.TYPE})
+  @Retention(RetentionPolicy.RUNTIME)
+  @Documented
+  @Import({AspectJAutoProxyRegistrar.class})//导入AspectJ注解风格所需要的Bean(有很多)
+  public @interface EnableAspectJAutoProxy {
+      //...
+  }
+  //在SpringBoot启动程序上加上@EnableAspectJAutoProxy注解就可以开启AspectJ注解风格
+  
+  @Configuration
+  public class ConfigA {
+    public @Bean A a() { return new A(); }
+  }
+  
+  @Configuration
+  @Import(ConfigA.class)//加入Import之后我们如果想要同时使用ConfigA和ConfigB，那么只需要在程序中注入ConfigB即可，无需再写注入ConfigA的代码
+  public class ConfigB {
+    public @Bean B b() { return new B(); }
+  }
+  
+  --------------------以下是@Import的三种使用方式
+  
+  1.直接填class数组的方式(比如@Import({A.class,B.class...}))
+  2.ImportSelector的方式(写一个类实现ImportSelector接口，在重写selectImports方法内指明要注入Bean，然后这样调用@Import({Myclass.class}))
+  public class Myclass implements ImportSelector {
+      @Override
+      public String[] selectImports(AnnotationMetadata annotationMetadata) {
+          return new String[0];//写 哪些Bean需要被注入 的逻辑
+      }
+  }
+  3.ImportBeanDefinitionRegistrar的方式(用于注入没被IoC容器管理的对象，这样调用@Import({ABeanDefinitionRegistry.class}))
+  public class ABeanDefinitionRegistry implements ImportBeanDefinitionRegistrar{//该接口用于动态注册Bean定义
+      @Override
+      public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,
+              BeanDefinitionRegistry registry) {
+  　　　　　//简单说下使用，只要将beanDefinition注册到registry里，就算把bean对象引入了；只是简单写了个例子引入A类
+          BeanDefinitionBuilder bd = BeanDefinitionBuilder.rootBeanDefinition(A.class);
+          registry.registerBeanDefinition("a", bd.getBeanDefinition());
+      }
+  }
+  ```
+
 **注入简单类型的注解**
 
 - @Value：@Value("${}")
@@ -5141,6 +5191,21 @@ AOP把软件系统分为两个部分：核心关注点和横切关注点。业�
 
 ==**Spring AOP的底层原理是通过动态代理实现的。**==
 
+#### 6.Spring AOP, AspectJ, JDK 动态代理, CGLIB的关系
+
+Spring AOP和Aspectj是两种实现aop的框架
+
+Spring AOP采用的是动态代理
+
+- 动态代理有两种底层技术实现：
+  - jdk动态代理（默认有接口的目标类使用jdk动态代理）
+  - cglib（没有接口或有接口的目标类使用）
+- Spring AOP采用了Aspectj包提供的注解，但是底层编译器和织入器并不是Aspectj
+
+Aspectj采用的是**静态代理**，速度比Spring AOP更快。
+
+> Spring AOP(仅支持方法织入)并没有包含AspectJ(支持所有切入点)，仅仅是采用了AspectJ的注解风格，强大的AspectJ框架有自己的编译器(ajc)和织入器
+
 #### 7. AOP中切面和切点的概念有了解过吗？✅
 
 * **通知 （Advice）**：增强的逻辑/代码，就是拦截到目标对象的连接点后要做的事情。通知定义了何时，做什么。
@@ -5151,6 +5216,8 @@ AOP把软件系统分为两个部分：核心关注点和横切关注点。业�
 * **AOP代理（AOP Proxy）**：目标对象应用通知后创建的代理对象。在Spring AOP中有两种代理方式，JDK动态代理和CGLIB代理。
 * **织入（Weaving）**：将通知应用到目标对象，进而生成代理对象的过程。
 
+补充：通知器(advisor)：和切面一样，也包括通知和切点，区别是advisor的通知必须实现Advice接口，一般用于事务管理AOP
+
 #### 8. AspectJ定义的通知类型有哪些
 
 - Before（前置通知）：目标对象方法调用前触发。
@@ -5159,14 +5226,30 @@ AOP把软件系统分为两个部分：核心关注点和横切关注点。业�
 - AfterThrowing（异常通知）：目标对象方法中触发/抛出异常后触发。
 - Around（环绕通知）==最外层==：可以直接通过形参拿到目标对象和方法，可以自己控制方法执行前后的操作，甚至可以不调用目标对象的方法。
 
-#### 9. AOP 的代理有哪几种方式？ ✅
+#### 9. Spring AOP 的代理有哪几种方式？ ✅
 
-==AOP 思想==的实现一般都是==基于代理模式== ，在 Java 中一般采用 JDK 动态代理模式，但是我们都知道， **JDK 动态代理模式只能代理接口而不能代理类**。因此，==Spring AOP 会按照下面两种情况进行切换==，因为 Spring AOP 同时支持 CGLIB、ASPECTJ、JDK 动态代理。
+==AOP 思想==的实现一般都是==基于代理模式== ，在 Java 中一般采用 JDK 动态代理模式，但是我们都知道， **JDK 动态代理模式只能代理接口而不能代理类**。因此，==Spring AOP (由ProxyFactory执行判断)会按照下面两种情况进行切换==，因为 Spring AOP 同时支持 CGLIB、JDK 动态代理。
 
 1. 如果==目标对象的实现类实现了接口==，Spring AOP 将会采用 ==JDK 动态代理==来生成 AOP 代理类； 
 2. 如果目标对象的实现类==没有实现接口==，Spring AOP 将会采用 ==CGLIB== 来生成 AOP 代理类。不过这个选择过程对开发者完全透明、开发者也无需关心。
 
 ![SpringAOPProcess](Java八股整理.assets/926dfc549b06d280a37397f9fd49bf9d.jpg)
+
+#### 9.Spring AOP实现原理
+
+AbstractAutoProxyCreator这个抽象类实现了BeanPostProcessor接口，任何Spring中的Bean在初始化之后都会经过这个后处理器的加工，找到容器中所有的Advisor(切点+切面逻辑)，然后判断这个Bean是否存在Advisor所匹配的切点，如果匹配就表示当前这个初始化的Bean需要代理，此时就会通过ProxyFactory选择具体的动态代理手段来构建代理对象。
+
+```java
+@EnableAspectJAutoProxy 
+	- import AnnotationAwareAspectJAutoProxyCreator
+//核心就是往IOC容器中import了一个AnnotationAwareAspectJAutoProxyCreator类的Bean实例，这个类是AbstractAutoProxyCreator的子类，所以一旦引入，会对所有新建的Bean执行后置处理器方法。它除了可以找到所有的Advisor类型的Bean，还可以找到@Aspect注解的Bean，并将其解析为Advisor对象，然后走AOP的逻辑生成代理对象。
+```
+
+#### 10.ASM字节码技术
+
+访问者模式：元素的执行算法可以随着访问者改变而改变。
+
+ASM是一个操纵字节码的工具框架，ASM可以直接生成二进制的class文件，可以对class文件做修改。 实现机理：ASM通过访问者模式，将文件的内容从头到尾扫描，每当扫描到特定的内容标识就会回调对应的逻辑处理方法，基于此可以实现对源文件的增强，来实现代理技术。 由于是直接操纵字节码，效率十分高。常见的Groovy、Cglib都运用了ASM技术。
 
 #### 10.JDK动态代理如何实现？✅
 
@@ -5220,16 +5303,12 @@ class MyInvocationHandler implements InvocationHandler{
 }
 ```
 
-
-
 - JDK动态代理步骤：
 
 1. **代理类**通过实现`InvocationHandler`接口，重写`invoke`方法，通过反射调用**被代理类**的方法，并增强。
 2. 通过`Proxy.newProxyInstance()`返回一个**代理类对象**（这个代理类对象继承了`java.lang.reflect.Proxy`，实现了目标类接口）。
 
-
-
-- 补充 CGLIB动态代理步骤：
+#### 10. CGLIB动态代理
 
 1. 定义一个**拦截器**并实现接口 `MethodInterceptor`，重写`intercept`方法，用于拦截被代理类的方法，不是用反射，而是FastClass机制。`intercept`中调用`invokeSuper(o,objects)`来调用被增强的目标对象方法。（注意CGLIB不能调用`invoke`，否则会栈溢出，因为`invoke`对应的是增强方法本身）
 2. 代理工厂类通过`Enhancer`类设置回调，并`create()`创建代理类，代理类是目标对象的子类，即`proxy=Enhancer.create()`，这个`proxy`就是动态生成的。
@@ -5266,8 +5345,7 @@ class MyInvocationHandler implements InvocationHandler{
 
 
 
-- AspectJ代理底层也是通过jdk/cglib代理实现的。
-  - 每个切面的优先级可以通过`@Order`注解实现。
+- 每个切面的优先级可以通过`@Order`注解实现。
 
 #### 11.  谈谈对SpringMVC的理解？✅
 
@@ -5489,14 +5567,33 @@ public void query(){}
 
 #### 22 @Transactional原理（try catch了要添加事务的方法）
 
+```java
+@EnableTransactionManagement
+    - import AutoProxyRegistrar	//开启AOP的支持，底层就是一个PostProcessor
+    - import ProxyTransactionManagementConfiguration //事务切面功能的具体实现，配置类，包含3个Bean
+        //相当于一个Advisor
+        -import BeanFactoryTransactionAttributeSourceAdvisor
+        //用来检查某个类或者方法上是否添加了@Transactional注解
+        -import AnnotationTransactionAttibuteSource
+        //具体的事务代理逻辑，如果某个类存在@Transactional注解，那么在运行事务切到的方法时，就会先调用这个TransactionInterceptor的invoke中进行事务的开启
+        -import TransactionInterceptor
+```
+
+1. Bean的生命周期中，初始化后阶段，通过`BeanPostProcessor`机制，经过`InfrastructureAdvisorAutoProxyCreator`的后置处理方法检查当前初始化的Bean是否存在@Transactional注解，随之生成一个代理对象。
+
+2. 在外部调用这个代理对象的事务方法的时候，命中MethodInterceptor拦截，检查当前方法是否有匹配的Advisor，有则执行对应的invoke方法，在invoke方法里定义了事务的实现原理。
+
+3. 利用配置好的`PlatformTransactionManager`事务管理器新建一个数据库连接。
+
+4. 修改这个Connection的提交模式`autoCommit`为false，否则每一条SQL都要自动提交。
+
+5. 执行`MethodInvocation.proceed( )`方法，这里面就会调用我们自己的方法逻辑，例如SQL的执行。
+
+6. 执行结束，如果没有抛出异常则提交，否则回滚。
+
+
+
 - 通过一个`TransactionInterceptor`（是一个`methodInterceptor`  CGLIB中的）拦截了方法，然后织入切面。其中`TransactionInterceptor`只起目标方法调用`invoke`的作用，主要的逻辑实现在他的父类`TransactionAspectSupport`（AspectJ也是基于这个），的`invokeWithinTransaction`方法中。另外`TransactionAspectSupport`使用了策略设计模式(Strategy)。它会使用一个外部指定的`PlatformTransactionManager`==ptm==来执行事务管理逻辑，并且使用一个外部指定的`TransactionAttributeSource`==tas==用来获取事务定义信息，也就是@Transactional这种注解上的信息。
-
-便于理解：`TransactionInterceptor`被作为一个Bean注册到容器中，应用启动时，Spring的自动代理机制会发现`TransactionInterceptor`，并将他包裹到添加了@Transaction的方法。
-
-1. 获取方法上标注的注解的元数据，包括传播行为、隔离级别、异常配置等信息。
-2. 通过ThreadLocal获取事务上下文，检查是否已经激活事务。
-3. 如果已经激活事务，则根据传播行为，看是否需要新建事务。
-4. 开启事务，先通过数据库连接池获取链接，关闭链接的autocommit，然后在try catch里反射执行真正的数据库操作，通过异常情况来决定是commit还是rollback。
 
 ---
 
