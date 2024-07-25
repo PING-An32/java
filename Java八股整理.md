@@ -813,13 +813,19 @@ JDK1.8则因为巧妙的设计，性能有了大大的提升：由于数组的�
 
 #### 0 介绍一下MySQL
 
-介绍一下MySQL？SQL全称结构化查询语言（Structured Query Language），MySQL是一种关系型数据库，关系型数据库就是一种建立在关系模型的基础上的数据库。
+介绍一下MySQL？SQL全称结构化查询语言（Structured Query Language），MySQL是一种关系型数据库，关系型数据库就是一种建立在关系模型的基础上的数据库，由C++语言实现。
 
 关系模型表明了数据库中所存储的数据之间的联系（一对一、一对多、多对多）（使用==关系模型（二维表格模型）==来组织数据的数据库）。大部分关系型数据库都使用 SQL 来操作数据库中的数据。并且，大部分关系型数据库都支持事务的四大特性(ACID)。MySQL用于持久化存储我们的系统中的一些数据比如用户信息。可以在规则许可下根据个性化的需要对其进行修改，默认端口号是3306。
 
 **关系型数据库**：是以表格的形式存储数据，也就是关系模型（简单说就是二维表格模型）。**非关系型数据库**NoSQL（Not Only SQL )，意为不仅仅是 SQL：数据以对象的形式存储在数据库中，而对象之间的关系通过每个对象自身的属性来决定，常用于存储非结构化的数据。比如Redis，键值数据库。
 
 SQL：非过程化语言，只需要知道要做什么，不必担心如何去做。
+
+#### 0. 浙大MiniSQL
+
+![minisql](Java八股整理.assets/minisql.png)
+
+![Interpreter_flow](Java八股整理.assets/Interpreter_flow.png)
 
 #### 1. MySQL字段类型
 
@@ -4933,8 +4939,17 @@ Spring架构：
 #### Spring启动流程
 
 1. 读取web.xml文件。
+
 2. 创建 ServletContext，为 ioc 容器提供宿主环境。
+
 3. 触发容器初始化事件，调用 contextLoaderListener.contextInitialized()方法，在这个方法会初始化一个应用上下文WebApplicationContext，即 Spring 的 ioc 容器。ioc 容器初始化完成之后，会被存储到 ServletContext 中。
+
+   > WebApplicationContext继承了ApplicationContext接口，是其的扩展，增加了WEB应用特性，还可以视图解析、主题解析、映射，通过ServletContext与servlet关联。WebApplicationContext被绑定在ServletContext上。
+   >
+   > ApplicationContext是spring中的容器，与BeanFactory类似，可以加载配置文件中定义的bean。
+   >
+   > BeanFactory已废弃。
+
 4. 初始化web.xml中配置的Servlet。如DispatcherServlet，用于匹配、处理每个servlet请求。
 
 #### 2.谈谈你对IOC的理解？✅
@@ -5070,23 +5085,33 @@ public OneService getService(status) {
   --------------------以下是@Import的三种使用方式
   
   1.直接填class数组的方式(比如@Import({A.class,B.class...}))
-  2.ImportSelector的方式(写一个类实现ImportSelector接口，在重写selectImports方法内指明要注入Bean，然后这样调用@Import({Myclass.class}))
+  2.ImportSelector的方式(写一个类实现ImportSelector接口，在重写selectImports方法内指明要注入的Bean，然后这样调用@Import({Myclass.class}))
   public class Myclass implements ImportSelector {
       @Override
-      public String[] selectImports(AnnotationMetadata annotationMetadata) {
-          return new String[0];//写 哪些Bean需要被注入 的逻辑
+      public String[] selectImports(AdviceMode adviceMode) {
+          switch (adviceMode) {
+              case PROXY:
+                  return new String[]{AutoProxyRegistrar.class.getName(), ProxyTransactionManagementConfiguration.class.getName()};
+              case ASPECTJ:
+                  return new String[]{this.determineTransactionAspectClass()};
+              default:
+                  return null;
+          }//写 哪些Bean需要被注入 的逻辑
       }
   }
-  3.ImportBeanDefinitionRegistrar的方式(用于注入没被IoC容器管理的对象，这样调用@Import({ABeanDefinitionRegistry.class}))
+  3.ImportBeanDefinitionRegistrar的方式(80%相似，可以用于注入没被IoC容器管理的对象，这样调用@Import({ABeanDefinitionRegistry.class}))
   public class ABeanDefinitionRegistry implements ImportBeanDefinitionRegistrar{//该接口用于动态注册Bean定义
       @Override
       public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,
               BeanDefinitionRegistry registry) {
   　　　　　//简单说下使用，只要将beanDefinition注册到registry里，就算把bean对象引入了；只是简单写了个例子引入A类
-          BeanDefinitionBuilder bd = BeanDefinitionBuilder.rootBeanDefinition(A.class);
-          registry.registerBeanDefinition("a", bd.getBeanDefinition());
+          BeanDefinitionBuilder beanDefinition = BeanDefinitionBuilder.rootBeanDefinition(A.class);
+          registry.registerBeanDefinition("a", beanDefinition.getBeanDefinition());
       }
   }
+  
+  EnableTransactionManagement就使用了Selector的方式(根据PROXY/ASPECTJ来选择返回哪些Bean，如果是PROXY，会注入AutoProxyRegistrar(可以看到是第三种方式)和ProxyTransactionManagementConfiguration)
+  EnableAspectJAutoProxy使用了Registrar的方式(使用registry.registerBeanDefinition来将需要的Bean注入)
   ```
 
 **注入简单类型的注解**
@@ -5233,6 +5258,24 @@ Aspectj采用的是**静态代理**，速度比Spring AOP更快。
 1. 如果==目标对象的实现类实现了接口==，Spring AOP 将会采用 ==JDK 动态代理==来生成 AOP 代理类； 
 2. 如果目标对象的实现类==没有实现接口==，Spring AOP 将会采用 ==CGLIB== 来生成 AOP 代理类。不过这个选择过程对开发者完全透明、开发者也无需关心。
 
+注意SprintBoot2.0之后，如果使用SpringBoot进行开发，默认使用CGLIB代理
+
+```java
+在spring-boot-autoconfigure-2.4.5.jar的META-INF目录下spring-configuration-metadata.json文件中
+{
+    "name": "spring.aop.auto",
+    "type": "java.lang.Boolean",
+    "description": "Add @EnableAspectJAutoProxy.",//springboot2.0之后默认开启AOP支持，不需要在启动类上加@EnableAspectJAutoProxy注解
+    "defaultValue": true
+},
+{
+    "name": "spring.aop.proxy-target-class",//默认将proxy-target-class置为true，也就是默认使用CGLIB代理
+    "type": "java.lang.Boolean",
+    "description": "Whether subclass-based (CGLIB) proxies are to be created (true), as opposed to standard Java interface-based proxies (false).",
+    "defaultValue": true
+},
+```
+
 ![SpringAOPProcess](Java八股整理.assets/926dfc549b06d280a37397f9fd49bf9d.jpg)
 
 #### 9.Spring AOP实现原理
@@ -5324,13 +5367,13 @@ class MyInvocationHandler implements InvocationHandler{
 
 `XXXImpl`$$`EnhancerByCGLIB`$$`随机字符串1`==真正的代理类==
 
-可以看到CGLIB继承了`XXXImpl`类，即目标类（被代理类），实现了Factory接口
+可以看到CGLIB生成的代理类继承了`XXXImpl`类，即目标类（被代理类），实现了Factory接口
 
-而JDK继承的是`java.lang.reflect.Proxy`，并实现了目标类的接口。这也是为什么JDK动态代理不能对类代理的原因。
+而JDK生成的代理类继承的是`java.lang.reflect.Proxy`，并实现了目标类的接口。这也是为什么JDK动态代理不能对类代理的原因。
 
-`XXXImpl`$$`EnhancerByCGLIB`$$`随机字符串2`==代理对象的FastClass，继承了FastClass类，==调用invoke或invokeSuper时动态生成
+`XXXImpl`$$`EnhancerByCGLIB`$$`随机字符串2`==代理对象的FastClass，继承了FastClass类==，调用invoke或invokeSuper时动态生成
 
-`XXXImpl`$$`FastClassByCGLIB`$$`随机字符串3`==目标对象的FastClass，继承了FastClass类==调用invoke或invokeSuper时动态生成
+`XXXImpl`$$`FastClassByCGLIB`$$`随机字符串3`==目标对象的FastClass，继承了FastClass类==，调用invoke或invokeSuper时动态生成
 
 
 
@@ -5421,6 +5464,15 @@ ACID:
 2. 代理设计模式 : Spring AOP 功能的实现； 
 3. 单例设计模式 : Spring 中的 Bean 默认都是单例的；
 4. 模板方法模式 : Spring 中 jdbcTemplate、hibernateTemplate 等以 Template 结尾的对数据库操作的类，它们就使用到了模板模式；
+5. 适配器模式： 将一个接口转换成客户希望的另一个接口，适配器模式使接口不兼容的那些类可以一起工作。
+
+>  Spring AOC的增强或通知使用到了适配器模式，与之相关的接口是AdvisorAdapter。对不同位置的增强(Before,After,AfterReturning...)通过适配器，适配成MethodInterceptor接口类型的对象。（如：`MethodBeforeAdviceAdapter` 通过调用 `getInterceptor` 方法，将 `MethodBeforeAdvice` 适配成 `MethodBeforeAdviceInterceptor` ）。
+
+> SpringMVC中，`DispatcherServlet` 根据请求信息调用 `HandlerMapping`，解析请求对应的 `Handler`。解析到对应的 `Handler`（也就是我们平常说的 `Controller` 控制器）后，开始由`HandlerAdapter` 适配器处理。`HandlerAdapter` 作为期望接口，具体的适配器实现类用于对目标类进行适配，`Controller` 作为需要适配的类。
+
+6. 装饰者模式：装饰者模式可以动态地给对象添加一些额外的属性或行为，比继承更轻量。
+
+> Spring 中配置 DataSource 的时候，DataSource 可能是不同的数据库和数据源。我们能否根据客户的需求在少修改原有类的代码下动态切换不同的数据源？这个时候就要用到装饰者模式(这一点我自己还没太理解具体原理)。Spring 中用到的包装器模式在类名上含有 `Wrapper`或者 `Decorator`。这些类基本上都是动态地给一个对象添加一些额外的职责。
 
 #### 18 Spring常用注解和作用？
 
@@ -5554,8 +5606,6 @@ public void add(){
 public void query(){}
 ```
 
-
-
 #### 21. 过滤器Filter和拦截器Interceptors区别
 
 <img src="https://img-blog.csdnimg.cn/20200602173814901.png?#pic_center" alt="在这里插入图片描述" style="zoom: 67%;" />
@@ -5567,9 +5617,12 @@ public void query(){}
 
 #### 22 @Transactional原理（try catch了要添加事务的方法）
 
+https://juejin.cn/post/6977556232169062436
+
 ```java
-@EnableTransactionManagement
-    - import AutoProxyRegistrar	//开启AOP的支持，底层就是一个PostProcessor
+@EnableTransactionManagement(proxyTargetClass=false(spring默认)/true(springboot默认))//true表示只会使用CGLIB
+    - import AutoProxyRegistrar	//进一步import了下面的
+        - import InfrastructureAdvisorAutoProxyCreator//是AbstractAutoProxyCreator的子类，所以继承了PostProcessor，会在Bean初始化后阶段，检查当前Bean是否属于基础设施Bean。会进行对Advisor的寻找，然后判断当前Bean是否需要进行AOP并且是否有符合的切点，然后进行AOP的操作。
     - import ProxyTransactionManagementConfiguration //事务切面功能的具体实现，配置类，包含3个Bean
         //相当于一个Advisor
         -import BeanFactoryTransactionAttributeSourceAdvisor
@@ -5577,39 +5630,136 @@ public void query(){}
         -import AnnotationTransactionAttibuteSource
         //具体的事务代理逻辑，如果某个类存在@Transactional注解，那么在运行事务切到的方法时，就会先调用这个TransactionInterceptor的invoke中进行事务的开启
         -import TransactionInterceptor
+        
+if ((Boolean)proxyTargetClass) {
+    AopConfigUtils.forceAutoProxyCreatorToUseClassProxying(registry);
+    return;
+}
 ```
 
-1. Bean的生命周期中，初始化后阶段，通过`BeanPostProcessor`机制，经过`InfrastructureAdvisorAutoProxyCreator`的后置处理方法检查当前初始化的Bean是否存在@Transactional注解，随之生成一个代理对象。
+![img](Java八股整理.assets/ba3666bc6e6e41bdb2b8f1f51fe86fe1~tplv-k3u1fbpfcp-zoom-in-crop-mark_1512_0_0_0.awebp)
 
-2. 在外部调用这个代理对象的事务方法的时候，命中MethodInterceptor拦截，检查当前方法是否有匹配的Advisor，有则执行对应的invoke方法，在invoke方法里定义了事务的实现原理。
+1. Bean的生命周期中，初始化后阶段，通过`BeanPostProcessor`机制，经过`InfrastructureAdvisorAutoProxyCreator`的后置处理方法检查当前初始化的Bean是否存在@Transactional注解，随之**生成一个代理对象**。
 
-3. 利用配置好的`PlatformTransactionManager`事务管理器新建一个数据库连接。
+2. 在外部调用这个代理对象的事务方法的时候，会被 `CglibAopProxy.DynamicAdvisedInterceptor#intercept` 方法拦截；
 
-4. 修改这个Connection的提交模式`autoCommit`为false，否则每一条SQL都要自动提交。
+   `TransactionInterceptor#invoke` 被事务拦截器拦截
 
-5. 执行`MethodInvocation.proceed( )`方法，这里面就会调用我们自己的方法逻辑，例如SQL的执行。
+   `TransactionAspectSupport#invokeWithinTransaction` 事务处理，进一步调用
 
-6. 执行结束，如果没有抛出异常则提交，否则回滚。
+   >  (此处也会通过`AnnotationTransactionAttributeSource`用来获取事务定义信息，也就是@Transactional注解上的属性信息)
+
+   `TransactionAspectSupport#createTransactionIfNecessary`然后调用父类方法
+
+   `AbstractPlatformTransactionManager#getTransaction` 会在这里调用
+
+   `AbstractPlatformTransactionManager#startTransaction` 方法，来开启事务。进一步调用连接池的方法(`spring-jdbc-5.3.8.jar`SPI接口)
+
+   `DataSourceTransactionManager#doBegin`在连接池中取一个数据库连接，关闭自动提交
+
+   `ConnectionHandle#getConnection()`  &&  `DruidPooledConnection#setAutoCommit(false)`
+
+3. 业务代码的执行（`try{ProceedWithInvocation}`）
+
+   ![img](Java八股整理.assets/9ecead0c92fb462aa4f17a2d62f29f0d~tplv-k3u1fbpfcp-zoom-in-crop-mark_1512_0_0_0.awebp)
+
+4. `TransactionAspectSupport#commitTransactionAfterReturning(txinfo)`提交事务，调用父类方法
+
+   `AbstractPlatformTransactionManager#commit`抽象事务管理器，进行提交事务
+
+   `DataSourceTransactionManager#doCommit` 数据源数据管理器，提交事务
+
+   `DruidPooledConnection#Commit`最终还是执行到
+
+   `mysql-connector-java-8.0.25.jar` 包下面的 `ConnectionImpl#commit`
+
+   ![img](Java八股整理.assets/03478d58fbe4401c9044e97ad909374c~tplv-k3u1fbpfcp-zoom-in-crop-mark_1512_0_0_0.awebp)
+
+5. 执行结束，如果没有抛出异常则提交，否则回滚。
 
 
 
-- 通过一个`TransactionInterceptor`（是一个`methodInterceptor`  CGLIB中的）拦截了方法，然后织入切面。其中`TransactionInterceptor`只起目标方法调用`invoke`的作用，主要的逻辑实现在他的父类`TransactionAspectSupport`（AspectJ也是基于这个），的`invokeWithinTransaction`方法中。另外`TransactionAspectSupport`使用了策略设计模式(Strategy)。它会使用一个外部指定的`PlatformTransactionManager`==ptm==来执行事务管理逻辑，并且使用一个外部指定的`TransactionAttributeSource`==tas==用来获取事务定义信息，也就是@Transactional这种注解上的信息。
+**回滚原理：**
 
----
+异常在这里 `TransactionAspectSupport#invokeWithinTransaction` 会被 catch。
 
-#### SpringBoot相关八股文
+`AbstractPlatformTransactionManager#rollback` 在这里进行 rollback
+
+执行 `DataSourceTransactionManager#doRollback`
+
+最终执行到 `mysql-connector-java-8.0.25.jar` 的 `ConnectionImpl#rollback()` 到 `ConnectionImpl#rollbackNoChecks`
+
+从而执行 rollback 语句
+
+![img](Java八股整理.assets/6adba4cf171d4c858f6640dcd62af17d~tplv-k3u1fbpfcp-zoom-in-crop-mark_1512_0_0_0.awebp)
+
+伪代码：
+
+```java
+public Object invoke(MethodInvocation invocation) throws Throwable {
+    
+    // 获取事务资源
+  Object transaction = transactionManager.getTransaction(txAttr);    
+    Object retVal;
+    
+    try {
+        // 执行业务代码
+      retVal = invocation.proceedWithInvocation();
+        
+        // 提交事务
+        transactionManager.commit(txStatus);
+    } catch (Throwable ex){
+        // 先判断异常回滚策略，然后调用事务管理器的 rollback
+      rollbackOn(ex, txStatus);
+    } 
+}
+```
+
+## SpringBoot
+
+#### 1. 为什么要用SpringBoot
+
+**SpringBoot优点：**
+
+1. 独立运行：内嵌了各种servlet容器，Tomcat、Jetty等，SpringBoot只要打成一个可执行的jar包就能独立运行，所有的依赖包都在一个jar中。
+2. 简化配置：不用xml配置文件，使用注解式开发。
+3. 简化依赖：一个spring-boot-starter-web启动器就能拥有web的功能，不需要其他配置。
+
+#### 2. SpringBoot核心注解
+
+​	**启动类注解@SpringBootApplication**包含了3个注解：
+
+- @SpringBootConfiguration：组合了@Configuration注解，实现配置文件的功能。
+- @EnableAutoConfiguration：打开自动配置的功能，也可以关闭某个自动配置的选项。
+- @ComponentScan：Spring组件扫描。
+
+#### SpringBoot启动流程
+
+1. 首先从main找到run()方法，在执行run()方法之前new一个SpringApplication对象
+2. 进入run()方法，创建**应用监听器**SpringApplicationRunListeners开始监听
+3. 然后加载SpringBoot**配置环境**(ConfigurableEnvironment)，然后把配置环境(Environment)加入监听对象中
+4. 然后加载**应用上下文**(ConfigurableApplicationContext)，当做run方法的返回对象
+5. 最后**创建Spring容器**，refreshContext(context)，实现starter自动化配置和bean的实例化等工作。
+
+#### SpringBoot自动装配原理
+
+1. `@SpringBootApplication`注解中有一个`@EnableAutoConfiguration`注解，这个注解又实现了`@Import`注解。
+2. `@Import`注解实现了`AutoConfigurationImportSelector`类，里面有个`selectImports`方法，这个方法通过找到`spring.factories`文件来把类加载到IoC容器中。
+
+```java
+比如在org.springframework.boot的spring-boot-autoconfigure:2.4.5.jar这个包中
+- spring-boot-autoconfigure
+    - META-INF
+    	- spring.factories
+    		- 声明了org.springframework.boot.autoconfigure.aop.AopAutoConfiguration,\
+    - org.springframework.boot.autoconfigure
+    	- aop
+    		- AopAutoConfiguration.class(配置类，springboot会扫描并将其中的Bean加入IoC容器)
+```
 
 #### 说说对SpringBoot的理解
 
 spring boot来简化spring应用开发，约定大于配置，去繁从简。内置了Tomcat无需部署war文件，简化了maven配置，just run就能创建一个独立的，产品级别的应用。
-
-#### SpringBoot的启动流程
-
-
-
-#### SpringBoot自动装配
-
-springboot的**自动装配**实际上就是为了从**spring.factories**文件中获取到对应的需要进行自动装配的类，并生成相应的Bean对象，然后将它们交给spring容器来帮我们进行管理。这简化了开发过程，避免了手动配置每个组件。自动配置application.yml文件中的属性进行覆盖和调整，实现了灵活性，也体现了约定大于配置的设计思想。
 
 #### SpringBoot怎么实现一个starter
 
@@ -5643,71 +5793,9 @@ springboot的**自动装配**实际上就是为了从**spring.factories**文件�
    }
    ```
 
-   
-
 5. src/main/resources目录下新建META-INF/spring.factories.在这个文件中，指定你的自动配置类
 
 6. 打包并发布，这个starter就完成了
-
-
-
-## SpringBoot
-
-#### 1. 为什么要用SpringBoot
-
-**SpringBoot优点：**
-
-1. 独立运行：内嵌了各种servlet容器，Tomcat、Jetty等，SpringBoot只要打成一个可执行的jar包就能独立运行，所有的依赖包都在一个jar中。
-2. 简化配置：不用xml配置文件，使用注解式开发。
-3. 简化依赖：一个spring-boot-starter-web启动器就能拥有web的功能，不需要其他配置。
-
-#### 2. SpringBoot核心注解
-
-​	**启动类注解@SpringBootApplication**包含了3个注解：
-
-- @SpringBootConfiguration：组合了@Configuration注解，实现配置文件的功能。
-- @EnableAutoConfiguration：打开自动配置的功能，也可以关闭某个自动配置的选项。
-- @ComponentScan：Spring组件扫描。
-
-#### SpringBoot启动流程
-
-1. 首先从main找到run()方法，在执行run()方法之前new一个SpringApplication对象
-2. 进入run()方法，创建**应用监听器**SpringApplicationRunListeners开始监听
-3. 然后加载SpringBoot**配置环境**(ConfigurableEnvironment)，然后把配置环境(Environment)加入监听对象中
-4. 然后加载**应用上下文**(ConfigurableApplicationContext)，当做run方法的返回对象
-5. 最后**创建Spring容器**，refreshContext(context)，实现starter自动化配置和bean的实例化等工作。
-
-#### Transactional注解
-
-- 用来开启事务，常用属性有`propagation`和`isolation`
-- 实现原理：是基于AOP实现的，使用一个`TransactionInterceptor`，事务的入口是它的`invoke`方法。根据是否出现异常决定回滚或者提交事务。
-
-伪代码：
-
-```java
-public Object invoke(MethodInvocation invocation) throws Throwable {
-    
-    // 获取事务资源
-  Object transaction = transactionManager.getTransaction(txAttr);    
-    Object retVal;
-    
-    try {
-        // 执行业务代码
-      retVal = invocation.proceedWithInvocation();
-        
-        // 提交事务
-        transactionManager.commit(txStatus);
-    } catch (Throwable ex){
-        // 先判断异常回滚策略，然后调用事务管理器的 rollback
-      rollbackOn(ex, txStatus);
-    } 
-}
-```
-
-#### SpringBoot自动装配原理
-
-1. `@SpringBootApplication`注解中有一个`@EnableAutoConfiguration`注解，这个注解又实现了`@Import`注解。
-2. `@Import`注解实现了`AutoConfigurationImportSelector`类，里面有个`selectImports`方法，这个方法通过找到`spring.factories`文件来把类加载到IoC容器中。
 
 ## Redis
 
@@ -7089,8 +7177,8 @@ commit后要撤销这个操作你怎么做	【reset命令】git reset --soft HEA
 2. **内部排序**：对每个1亿个数的小块进行排序。这一步通常使用内存中的快速排序、堆排序或其他高效的排序算法。
 3. **存储排序结果**：将每个排序完成的1亿个数的小块写回到磁盘的临时文件。
 4. **归并排序**：在所有小块都排序并保存回磁盘后，使用归并排序对这些小块进行合并。归并排序需要维护一个输入缓冲区和一个输出缓冲区。
-   - **输入缓冲区**：每个临时文件（即每个小块）有一个输入缓冲区，用于从磁盘中读取数据到内存。
-   - **输出缓冲区**：用于保存即将写回到磁盘的已排序数据。
+   - **输入缓冲区**（内存中，多个）：每个临时文件（即每个小块）有一个输入缓冲区，用于从磁盘中读取数据到内存。
+   - **输出缓冲区**（内存中，一个）：用于保存即将写回到磁盘的已排序数据。
 5. **多路归并**：一次从每个输入缓冲区中取出一个数，找出其中最小的数，将其放入输出缓冲区。当输出缓冲区满时，将其写回磁盘。
 6. **迭代**：重复以上步骤，直到所有的数都被排序。
 7. **最终输出**：将所有已排序的小块合并成一个大的排序文件。
@@ -7112,14 +7200,14 @@ commit后要撤销这个操作你怎么做	【reset命令】git reset --soft HEA
 #### 100亿个url找重复的
 
 1. 布隆过滤器
-2. 先用算出url的hash,然后根据其hash存放到不同的位置，假设要将源文件拆分成1000个小文件才能放进内存，那就算出hash之后 hash%1000标记其存放的文件，最后将一千个小文件依次分别放入内存，重复的一定在一个小文件里面的。
+2. 先用算出url的hash,然后根据其hash存放到不同的位置，假设要将源文件（存放所有url的文件）拆分成1000个小文件才能放进内存，那就算出hash值之后 hash值%1000标记其存放的文件，最后将一千个小文件依次分别放入内存，重复的一定在一个小文件里面的。
 
 #### 100亿个数找最大的前100个
 
 topK问题
 
 *  如果不能全部放进内存：先取任意100个数字，维护一个**小根堆**，**小顶堆的顶是100个数里最小的**，然后从第101个数字开始，遇到比根节点大的元素就删除堆顶元素并把该数字放入堆。时间复杂度N*logK N是数据量，K是堆大小。
-*  如果能全部放进内存：快速选择 、 计数排序
+*  如果能全部放进内存：快速选择（类似于快排，随机选择一个pivot，partition之后，看pivot右边的元素个数） 、 计数排序（适用于值域较小的情况，不比较元素大小，而是计算每个元素的出现次数）
 
 #### 海量数据，提取出访问次数最多的IP
 
@@ -7136,6 +7224,8 @@ topK问题
 现在，根据哪只老鼠死亡，我们可以确定哪瓶药水有毒。例如，如果第3、4和7只老鼠死亡，我们就知道编号13的药水有毒。
 
 所以问题是，我们需要多少位的二进制数来表示1000？答案是10位，因为2^10 = 1024，而2^9 = 512是不足够的。这意味着我们需要10只老鼠来测试1000瓶中的一瓶毒药。
+
+1号老鼠会喝下所有二进制第1位为1的药水，2号老鼠会喝下所有二进制第2位为1的药水，3号老鼠会喝下所有二进制第3位为1的药水（每只老鼠都会喝下500瓶药水）
 
 #### 设计一个定时任务
 
